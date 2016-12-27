@@ -29,7 +29,7 @@ import Brick.Main (continue)
 import Brick.Types (BrickEvent(..))
 import Brick.Widgets.List (list)
 import Brick.Widgets.Core ((<=>), str)
-import Brick.Widgets.Edit (renderEditor, handleEditorEvent)
+import Brick.Widgets.Edit (renderEditor, handleEditorEvent, getEditContents)
 
 -- import UI.Types (AppState, ViewType(..), playlist, activeView, config, VtyEvent(..), UIName(..))
 import UI.Types (AppState, ViewType(..), artists, playlist, filterEditor, filterActive, activeView, UIName(..))
@@ -37,7 +37,8 @@ import qualified UI.Views.Main as Main
 import qualified UI.Widgets.ArtistsList as ArtistsList
 import Config (Config(..))
 
-import Network.MPD (withMPD, Song(..), Id(..), playId)
+import Network.MPD (withMPD, Song(..), Id(..), playId, Artist, toString)
+import Text.Fuzzy (simpleFilter)
 
 type NextState = EventM UIName (Next AppState)
 
@@ -46,10 +47,27 @@ draw state = Main.draw state widget
   where 
     -- fzf = TextInput.mkWidget
     fzf = renderEditor True (state^.filterEditor)
-    artistsWidget = ArtistsList.mkWidget (state^.artists)
+    artistsWidget = ArtistsList.mkWidget $
+      case (state^.filterActive) of
+        True -> getArtists state
+        False -> state^.artists
     widget = case (state^.filterActive) of
       True -> fzf <=> artistsWidget
       False -> artistsWidget
+
+getArtists :: AppState -> List UIName Artist
+getArtists state = filterArtists ft (state^.artists)
+  where ft = concat $ getEditContents (state^.filterEditor)
+
+filterArtists :: Text -> List UIName Artist -> List UIName Artist
+-- filterArtists ft as = list (UIName "filtered-artists") (fromList filtered) 1
+filterArtists ft as = filtered
+  where
+    -- filtered = simpleFilter (unpack ft) (toList as)
+    -- filteredList = fromString $ fromList filtered
+    filtered = as & listElementsL %~ (\v -> toVec (simpleFilter (unpack ft) (fromVec v)))
+    toVec l = fromList (fromString <$> l) :: Vector Artist
+    fromVec v = toString <$> (toList (v :: Vector Artist)) :: [String]
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
 event state (VtyEvent e) = case (state^.filterActive) of

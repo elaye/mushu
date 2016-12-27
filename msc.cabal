@@ -23,6 +23,7 @@ executable msc
                       ,network
                       ,libmpd
                       ,text
+                      ,fuzzy
                       ,time
                       ,bytestring
                       ,list-t

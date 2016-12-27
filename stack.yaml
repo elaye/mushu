@@ -40,19 +40,15 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps: 
-  - imap-0.2.0.3
   - monadIO-0.10.1.4
-  - rolling-queue-0.1
   - hscurses-1.4.2.0
   # - brick-0.8
   - brick-0.15.2
   - directory-1.2.5.0
-  #- emailparse-0.2.0.6
-  - mime-0.4.0.2
+  - fuzzy-0.1.0.0
   - libmpd-0.9.0.6
   - text-zipper-0.7.1
   - vty-5.12
-  #- strptime-1.0.10
 
 # Override default flag values for local packages and extra-deps
 flags: {}
