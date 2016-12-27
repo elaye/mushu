@@ -6,12 +6,15 @@ module UI.Types
 , activeView
 , playlist
 , helpActive
+, filterActive
+, filterEditor
 , VtyEvent(..)
 , UIName(..)
 ) where
 
 import ClassyPrelude
 
+import Brick.Widgets.Edit (Editor(..))
 import qualified Brick.Widgets.List as L
 
 import Config (Config)
@@ -21,11 +24,13 @@ import qualified Graphics.Vty as V
 
 import Network.MPD (Song(..))
 
-data ViewType = PlaylistView deriving Show
+data ViewType = PlaylistView | LibraryView deriving Show
 
 data AppState = AppState
   { _playlist :: L.List UIName Song
   -- , _config :: Config
+  , _filterEditor :: Editor Text UIName
+  , _filterActive :: Bool
   , _activeView :: ViewType
   , _helpActive :: Bool
   }
