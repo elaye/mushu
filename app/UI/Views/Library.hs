@@ -32,7 +32,7 @@ import Brick.Widgets.Core ((<=>), str)
 import Brick.Widgets.Edit (renderEditor, handleEditorEvent, getEditContents)
 
 -- import UI.Types (AppState, ViewType(..), playlist, activeView, config, VtyEvent(..), UIName(..))
-import UI.Types (AppState, ViewType(..), artists, playlist, filterEditor, filterActive, activeView, UIName(..))
+import UI.Types (AppState, ViewType(..), artists, playlist, filterEditor, filterActive, filterFocused, filteredArtists, activeView, UIName(..))
 import qualified UI.Views.Main as Main
 import qualified UI.Widgets.ArtistsList as ArtistsList
 import Config (Config(..))
@@ -47,16 +47,17 @@ draw state = Main.draw state widget
   where 
     -- fzf = TextInput.mkWidget
     fzf = renderEditor True (state^.filterEditor)
-    artistsWidget = ArtistsList.mkWidget $
-      case (state^.filterActive) of
-        True -> getArtists state
-        False -> state^.artists
+    artistsWidget = ArtistsList.mkWidget $ state^.filteredArtists
+      -- case (state^.filterActive) of
+      --   -- True -> getFilteredArtists state
+      --   True -> state^.filteredArtists
+      --   False -> state^.artists
     widget = case (state^.filterActive) of
       True -> fzf <=> artistsWidget
       False -> artistsWidget
 
-getArtists :: AppState -> List UIName Artist
-getArtists state = filterArtists ft (state^.artists)
+getFilteredArtists :: AppState -> List UIName Artist
+getFilteredArtists state = filterArtists ft (state^.artists)
   where ft = concat $ getEditContents (state^.filterEditor)
 
 filterArtists :: Text -> List UIName Artist -> List UIName Artist
@@ -70,28 +71,34 @@ filterArtists ft as = filtered
     fromVec v = toString <$> (toList (v :: Vector Artist)) :: [String]
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
-event state (VtyEvent e) = case (state^.filterActive) of
+event state (VtyEvent e) = case (state^.filterFocused) of
   True -> case e of
     (V.EvKey V.KEsc []) -> continue (state & filterActive .~ False)
+    (V.EvKey V.KEnter []) -> continue (state & filterFocused .~ False)
     ev -> do
       newFilterEditor <- handleEditorEvent ev (state^.filterEditor)
-      continue (state & filterEditor .~ newFilterEditor)
+      let newEditorState = state & filterEditor .~ newFilterEditor
+      continue $ newEditorState & filteredArtists .~ (getFilteredArtists newEditorState)
   False -> case e of
-    (V.EvKey (V.KChar '/') []) -> continue (state & filterActive .~ True)
+    (V.EvKey (V.KChar '/') []) -> continue (state & filterActive .~ True
+                                                  & filterFocused .~ True)
     (V.EvKey (V.KChar 'j') []) -> next state
     (V.EvKey (V.KChar 'k') []) -> previous state
     -- (V.EvKey V.KEnter []) -> play state
     (V.EvKey (V.KChar 'q') []) -> halt state
+    (V.EvKey V.KEsc []) -> case (state^.filterActive) of
+      True -> continue (state & filterActive .~ False)
+      False -> continue state
     -- VtyEvent (V.EvKey (V.KChar '1') []) -> changeView state 1
     {-V.EvKey (V.KChar '-') [] -> delete-}
     ev -> listEvent ev state
 event state _ = continue state
 
 next :: AppState -> NextState
-next state = continue $ state & artists %~ listMoveDown
+next state = continue $ state & filteredArtists %~ listMoveDown
 
 previous :: AppState -> NextState
-previous state = continue $ state & artists %~ listMoveUp
+previous state = continue $ state & filteredArtists %~ listMoveUp
 
 -- play :: AppState -> NextState
 -- play state = case (state^.artists.listSelectedL) of
@@ -105,5 +112,10 @@ previous state = continue $ state & artists %~ listMoveUp
 --         continue state
 
 listEvent :: V.Event -> AppState -> NextState
-listEvent event state = continue =<< (\m -> state & artists .~ m) <$> handleListEvent event (state^.artists)
+-- listEvent event state = continue =<< (\m -> state & artists .~ m) <$> handleListEvent event (state^.artists)
+-- listEvent event state = continue =<< case (state^.filterActive) of
+--   True -> (\m -> state & filteredArtists .~ m) <$> handleListEvent event (state^.filteredArtists)
+--   False -> (\m -> state & artists .~ m) <$> handleListEvent event (state^.artists)
+listEvent event state = continue =<< (\m -> state & filteredArtists .~ m) <$> handleListEvent event (state^.filteredArtists)
+
 

@@ -15,7 +15,7 @@ import Control.Monad (void)
 import Config
 
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, VtyEvent(..), UIName(..))
-import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists)
+import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists, filteredArtists)
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
 import qualified UI.Views.Playlist as PlaylistView
@@ -97,8 +97,10 @@ initialState playlist artistsList = AppState
     -- Note: we have only one line so we can do str.head
   , _filterEditor = editorText (UIName "editor-fzf") (str . (concatMap unpack)) (Just 1) ""
   , _filterActive = False
+  , _filterFocused = False
   -- , _activeView = PlaylistView
   , _artists = list (UIName "artists") (fromList artistsList) 1
+  , _filteredArtists = list (UIName "artists-filtered") (fromList artistsList) 1
   , _activeView = LibraryView
   , _helpActive = False
   }

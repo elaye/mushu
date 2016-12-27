@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+
 module UI.Types
 ( AppState(..)
 , ViewType(..)
@@ -8,7 +9,9 @@ module UI.Types
 , artists
 , helpActive
 , filterActive
+, filterFocused
 , filterEditor
+, filteredArtists
 , VtyEvent(..)
 , UIName(..)
 ) where
@@ -32,8 +35,10 @@ data AppState = AppState
   -- , _config :: Config
   , _filterEditor :: Editor Text UIName
   , _filterActive :: Bool
+  , _filterFocused :: Bool
   , _activeView :: ViewType
   , _artists :: L.List UIName Artist
+  , _filteredArtists :: L.List UIName Artist
   , _helpActive :: Bool
   }
 
