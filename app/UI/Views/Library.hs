@@ -29,7 +29,9 @@ import Brick.Main (continue)
 import Brick.Types (BrickEvent(..))
 import Brick.Widgets.List (list)
 import Brick.Widgets.Core ((<=>), str)
-import Brick.Widgets.Edit (renderEditor, handleEditorEvent, getEditContents)
+import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents)
+
+import Data.Text.Zipper (textZipper)
 
 -- import UI.Types (AppState, ViewType(..), playlist, activeView, config, VtyEvent(..), UIName(..))
 import UI.Types (AppState, ViewType(..), artists, playlist, filterEditor, filterActive, filterFocused, filteredArtists, activeView, UIName(..))
@@ -73,7 +75,10 @@ filterArtists ft as = filtered
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
 event state (VtyEvent e) = case (state^.filterFocused) of
   True -> case e of
-    (V.EvKey V.KEsc []) -> continue (state & filterActive .~ False)
+    (V.EvKey V.KEsc []) -> continue (state & filterActive .~ False
+                                           & filterFocused .~ False
+                                           & filterEditor %~ clearFilterEditor
+                                           & filteredArtists .~ (filterArtists "" (state^.artists)))
     (V.EvKey V.KEnter []) -> continue (state & filterFocused .~ False)
     ev -> do
       newFilterEditor <- handleEditorEvent ev (state^.filterEditor)
@@ -87,12 +92,17 @@ event state (VtyEvent e) = case (state^.filterFocused) of
     -- (V.EvKey V.KEnter []) -> play state
     (V.EvKey (V.KChar 'q') []) -> halt state
     (V.EvKey V.KEsc []) -> case (state^.filterActive) of
-      True -> continue (state & filterActive .~ False)
+      True -> continue (state & filterActive .~ False
+                              & filterEditor %~ clearFilterEditor
+                              & filteredArtists .~ (filterArtists "" (state^.artists)))
       False -> continue state
     -- VtyEvent (V.EvKey (V.KChar '1') []) -> changeView state 1
     {-V.EvKey (V.KChar '-') [] -> delete-}
     ev -> listEvent ev state
 event state _ = continue state
+
+clearFilterEditor :: Editor Text UIName -> Editor Text UIName
+clearFilterEditor editor = applyEdit (\_ -> textZipper [""] (Just 1)) editor
 
 next :: AppState -> NextState
 next state = continue $ state & filteredArtists %~ listMoveDown

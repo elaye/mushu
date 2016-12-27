@@ -34,6 +34,7 @@ executable msc
                       ,htoml
                       ,unordered-containers
                       ,brick
+                      ,text-zipper
                       ,microlens-platform >= 0.3.1.0
                       ,vty >= 5.5.0
                       ,process
