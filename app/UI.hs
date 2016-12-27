@@ -15,7 +15,7 @@ import Control.Monad (void)
 import Config
 
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, VtyEvent(..), UIName(..))
-import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..))
+import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists)
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
 import qualified UI.Views.Playlist as PlaylistView
@@ -34,7 +34,8 @@ import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
 import Brick.Types (Widget)
 
-import Network.MPD (withMPD, playlistInfo, play, pause, Song(..), State(..), Status(..), status)
+import Network.MPD (withMPD, playlistInfo, play, pause, Song(..), State(..), Status(..), Metadata(..), Artist, status)
+import qualified Network.MPD as MPD
 
 import Data.HashMap.Strict (elems)
 import Lens.Micro.Platform ((^.), (&), (.~), (%~))
@@ -52,12 +53,12 @@ drawUI state = if state^.helpActive
 -- appEvent :: AppState -> BrickEvent UIName VtyEvent -> NextState
 appEvent :: AppState -> BrickEvent UIName e -> NextState
 appEvent state event = case event of
-  VtyEvent (V.EvKey (V.KChar '?') []) -> M.continue $ state & helpActive %~ not
-  VtyEvent (V.EvKey (V.KChar 'p') []) -> toggle state
-  -- NewMailEvent -> updateMails state
-  ev -> case state^.activeView of
-    PlaylistView -> PlaylistView.event state ev
-    LibraryView -> LibraryView.event state ev
+    VtyEvent (V.EvKey (V.KChar '?') []) -> M.continue $ state & helpActive %~ not
+    VtyEvent (V.EvKey (V.KChar 'p') []) -> toggle state
+    -- NewMailEvent -> updateMails state
+    ev -> case state^.activeView of
+      PlaylistView -> PlaylistView.event state ev
+      LibraryView -> LibraryView.event state ev
 
 
 toggle :: AppState -> NextState
@@ -88,8 +89,8 @@ updatePlaylist state = do
 
 -- initialState :: Config -> [Song] -> AppState
 -- initialState config playlist = AppState
-initialState :: [Song] -> AppState
-initialState playlist = AppState
+initialState :: [Song] -> [Artist] -> AppState
+initialState playlist artistsList = AppState
   -- { _mails = list (UIName "mails") (fromList mails) 1
   { _playlist = list (UIName "playlist") (fromList playlist) 1
   -- , _config = config
@@ -97,6 +98,7 @@ initialState playlist = AppState
   , _filterEditor = editorText (UIName "editor-fzf") (str . (concatMap unpack)) (Just 1) ""
   , _filterActive = False
   -- , _activeView = PlaylistView
+  , _artists = list (UIName "artists") (fromList artistsList) 1
   , _activeView = LibraryView
   , _helpActive = False
   }
@@ -135,9 +137,12 @@ start = do
   case res of
     Left err -> print "Err reading initial playlist state"
     Right songs -> do
-      -- let initState = initialState config songs
-      let initState = initialState songs
-      -- chan <- newChan
-      -- threadId <- watchNew defaultAccount $ newMailAction chan
-      -- void $ M.customMain (V.mkVty def) chan app initState
-      void $ M.defaultMain app initState
+      artistsRes <- withMPD $ MPD.list Artist Nothing
+      case artistsRes of
+        Left err -> print $ "Error retrieving artists list: " ++ show err
+        Right artistsList -> do
+          let initState = initialState songs artistsList
+
+          -- void $ M.customMain (V.mkVty def) chan app initState
+          -- void $ M.defaultMain app initState
+          void $ M.defaultMain app initState

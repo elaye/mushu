@@ -5,6 +5,7 @@ module UI.Types
 -- , config
 , activeView
 , playlist
+, artists
 , helpActive
 , filterActive
 , filterEditor
@@ -22,7 +23,7 @@ import Config (Config)
 import Lens.Micro.Platform (makeLenses)
 import qualified Graphics.Vty as V
 
-import Network.MPD (Song(..))
+import Network.MPD (Song(..), Artist)
 
 data ViewType = PlaylistView | LibraryView deriving Show
 
@@ -32,6 +33,7 @@ data AppState = AppState
   , _filterEditor :: Editor Text UIName
   , _filterActive :: Bool
   , _activeView :: ViewType
+  , _artists :: L.List UIName Artist
   , _helpActive :: Bool
   }
 
