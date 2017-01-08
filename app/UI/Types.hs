@@ -26,19 +26,21 @@ import Config (Config)
 import Lens.Micro.Platform (makeLenses)
 import qualified Graphics.Vty as V
 
-import Network.MPD (Song(..), Artist)
+-- import Network.MPD (Song(..), Artist)
+import qualified Network.MPD as M
 
 data ViewType = PlaylistView | LibraryView deriving Show
 
 data AppState = AppState
-  { _playlist :: L.List UIName Song
+  { _playlist :: L.List UIName M.Song
   -- , _config :: Config
   , _filterEditor :: Editor Text UIName
   , _filterActive :: Bool
   , _filterFocused :: Bool
   , _activeView :: ViewType
-  , _artists :: L.List UIName Artist
-  , _filteredArtists :: L.List UIName Artist
+  , _artists :: L.List UIName M.Artist
+  -- , _library :: Library
+  , _filteredArtists :: L.List UIName M.Artist
   , _helpActive :: Bool
   }
 

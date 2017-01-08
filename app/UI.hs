@@ -34,7 +34,21 @@ import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
 import Brick.Types (Widget)
 
-import Network.MPD (withMPD, playlistInfo, play, pause, Song(..), State(..), Status(..), Metadata(..), Artist, status)
+import Library (mkLibrary)
+
+import Network.MPD
+  ( withMPD
+  , playlistInfo
+  , play
+  , pause
+  , Song(..)
+  , State(..)
+  , Status(..)
+  , Metadata(..)
+  , Artist
+  , status
+  )
+
 import qualified Network.MPD as MPD
 
 import Data.HashMap.Strict (elems)
@@ -124,27 +138,37 @@ app =
           -- , M.appLiftVtyEvent = VtyEvent
           }
 
--- newMailAction :: Chan VtyEvent -> IO ()
--- newMailAction chan = writeChan chan NewMailEvent
+-- getAllSongs :: IO [Song]
+-- getAllSongs = do
+--   res <- withMPD $ MPD.listAllInfo (fromString "")
+--   let f x = case x of
+--               LsSong _ -> True
+--               _ -> False
+--   case res of
+--     Left err -> print "Err while getting list of songs" >> return []
+--     Right lsRes -> return $ filter f lsRes
 
--- start :: Config -> (Account -> IO [Mail]) -> IO ()
--- start config update = do
--- start :: Config -> IO ()
--- start config = do
-start :: IO ()
-start = do
-  -- let defaultAccount = (elems (accounts config)) !! 1
-  -- mails <- update defaultAccount
+getPlaylist :: IO [Song]
+getPlaylist = do
   res <- withMPD $ playlistInfo Nothing
   case res of
-    Left err -> print "Err reading initial playlist state"
-    Right songs -> do
-      artistsRes <- withMPD $ MPD.list Artist Nothing
-      case artistsRes of
-        Left err -> print $ "Error retrieving artists list: " ++ show err
-        Right artistsList -> do
-          let initState = initialState songs artistsList
+    Left err -> print "Err while getting list of songs" >> return []
+    Right songs -> return songs
 
-          -- void $ M.customMain (V.mkVty def) chan app initState
-          -- void $ M.defaultMain app initState
-          void $ M.defaultMain app initState
+getArtists :: IO [Artist]
+getArtists = do
+  res <- withMPD $ MPD.list Artist Nothing
+  case res of
+    Left err -> print "Err while retrieving artists list" >> return []
+    Right artists -> return artists
+
+start :: IO ()
+start = do
+  playlist <- getPlaylist
+  -- songs <- getAllSongs
+  artists <- getArtists
+  library <- mkLibrary
+  print library
+  -- let initState = initialState playlist songs
+  -- let initState = initialState playlist artists
+  -- void $ M.defaultMain app initState
