@@ -80,24 +80,3 @@ attrs = [ (selAttrName, fg V.black)
         , (playingAttrName, fg V.brightBlack)
         , (selPlayingAttrName, V.brightBlack `on` V.black)
         ]
-
--- formatFrom :: Mail -> String
--- formatFrom mail = unpack $ case mail^.from of
---   [] -> "[no from]"
---   fs -> concatMap fmt fs
---     where fmt f = maybe (f^.address) (replace "_" " ") $ (f^.name)
-
--- formatSubject :: Mail -> String
--- formatSubject mail = unpack $ maybe "[no subject]" checkEmpty (mail^.subject)
---   where checkEmpty s = if s == "" then "[no subject]" else s 
-
--- formatDate :: Mail -> String
--- formatDate mail = maybe "[no date]" fmt (mail^.date)
---   where
---     fmt d = shortMonth d ++ " " ++ pad (dayNb d)
---     pad d = (if d < 10 then " " else "") ++ show d
---     shortMonth d = (monthLocale d) ^. _2
---     monthLocale d =  (months defaultTimeLocale) UnsafePrelude.!! (monthNb d)
---     monthNb d = (gDay d) ^. _2
---     dayNb d = (gDay d) ^. _3
---     gDay d = toGregorian $ localDay d

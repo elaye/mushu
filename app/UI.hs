@@ -15,7 +15,8 @@ import Control.Monad (void)
 import Config
 
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, VtyEvent(..), UIName(..))
-import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists, filteredArtists)
+-- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists, filteredArtists)
+import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), library, filteredLibrary)
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
 import qualified UI.Views.Playlist as PlaylistView
@@ -23,6 +24,8 @@ import qualified UI.Views.Library as LibraryView
 import qualified UI.Views.Help as HelpView
 import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Playlist as Playlist
+import qualified UI.Widgets.Library as Library
+import UI.Widgets.Library (Library(..))
 
 import qualified Graphics.Vty as V
 
@@ -34,7 +37,7 @@ import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
 import Brick.Types (Widget)
 
-import Library (mkLibrary)
+import UI.Widgets.Library (fetchLibrary)
 
 import Network.MPD
   ( withMPD
@@ -103,8 +106,10 @@ updatePlaylist state = do
 
 -- initialState :: Config -> [Song] -> AppState
 -- initialState config playlist = AppState
-initialState :: [Song] -> [Artist] -> AppState
-initialState playlist artistsList = AppState
+-- initialState :: [Song] -> [Artist] -> AppState
+-- initialState playlist artistsList = AppState
+initialState :: [Song] -> Library UIName -> AppState
+initialState playlist library = AppState
   -- { _mails = list (UIName "mails") (fromList mails) 1
   { _playlist = list (UIName "playlist") (fromList playlist) 1
   -- , _config = config
@@ -113,9 +118,11 @@ initialState playlist artistsList = AppState
   , _filterActive = False
   , _filterFocused = False
   -- , _activeView = PlaylistView
-  , _artists = list (UIName "artists") (fromList artistsList) 1
-  , _filteredArtists = list (UIName "artists-filtered") (fromList artistsList) 1
+  -- , _artists = list (UIName "artists") (fromList artistsList) 1
+  -- , _filteredArtists = list (UIName "artists-filtered") (fromList artistsList) 1
   , _activeView = LibraryView
+  , _library = library
+  , _filteredLibrary = library
   , _helpActive = False
   }
 
@@ -124,6 +131,7 @@ attributesMap = attrMap V.defAttr $ concat
     [ Utils.attrs
     , Playlist.attrs
     , Status.attrs
+    , Library.attrs
     -- , Explorer.attrs
     ]
 
@@ -167,8 +175,9 @@ start = do
   playlist <- getPlaylist
   -- songs <- getAllSongs
   artists <- getArtists
-  library <- mkLibrary
-  print library
+  library <- fetchLibrary (UIName "library")
+  -- print library
   -- let initState = initialState playlist songs
   -- let initState = initialState playlist artists
-  -- void $ M.defaultMain app initState
+  let initState = initialState playlist library
+  void $ M.defaultMain app initState

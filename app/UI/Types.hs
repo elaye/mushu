@@ -6,12 +6,14 @@ module UI.Types
 -- , config
 , activeView
 , playlist
-, artists
+-- , artists
 , helpActive
 , filterActive
 , filterFocused
 , filterEditor
-, filteredArtists
+-- , filteredArtists
+, library
+, filteredLibrary
 , VtyEvent(..)
 , UIName(..)
 ) where
@@ -20,6 +22,7 @@ import ClassyPrelude
 
 import Brick.Widgets.Edit (Editor(..))
 import qualified Brick.Widgets.List as L
+import UI.Widgets.Library (Library)
 
 import Config (Config)
 
@@ -38,9 +41,10 @@ data AppState = AppState
   , _filterActive :: Bool
   , _filterFocused :: Bool
   , _activeView :: ViewType
-  , _artists :: L.List UIName M.Artist
-  -- , _library :: Library
-  , _filteredArtists :: L.List UIName M.Artist
+  -- , _artists :: L.List UIName M.Artist
+  , _library :: Library UIName
+  , _filteredLibrary :: Library UIName
+  -- , _filteredArtists :: L.List UIName M.Artist
   , _helpActive :: Bool
   }
 
