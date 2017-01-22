@@ -35,7 +35,7 @@ import qualified Graphics.Vty as V
 import qualified UI.Widgets.Library as Library
 import UI.Widgets.Library (albums, artistAlbums)
 
-import UI.Types (AppState(..), UIName(..), library, filteredLibrary, libraryArtists, libraryAlbums, librarySongs)
+import UI.Types (AppState(..), UIName(..), ActiveColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs)
 
 type NextState = EventM UIName (Next AppState)
 
@@ -76,18 +76,25 @@ selPlayingAttrName = listAttr <> "selected-playing"
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
 event state (VtyEvent e) = case e of
-    (V.EvKey (V.KChar 'j') []) -> next state
-    (V.EvKey (V.KChar 'k') []) -> previous state
+    (V.EvKey (V.KChar 'j') []) -> case activeColumn of
+      ArtistsColumn -> nextArtist state
+      AlbumsColumn -> nextAlbum state
+    (V.EvKey (V.KChar 'k') []) -> case activeColumn of
+      ArtistsColumn -> previousArtist state
+      AlbumsColumn -> previousAlbum state
+    (V.EvKey (V.KChar 'l') []) -> nextColumn state
+    (V.EvKey (V.KChar 'h') []) -> previousColumn state
     -- (V.EvKey V.KEnter []) -> play state
     (V.EvKey (V.KChar 'q') []) -> halt state
     -- VtyEvent (V.EvKey (V.KChar '1') []) -> changeView state 1
     {-V.EvKey (V.KChar '-') [] -> delete-}
     -- ev -> listEvent ev state
     ev -> continue state
+  where activeColumn = state^.libraryActiveColumn
 event state _ = continue state
 
-next :: AppState -> NextState
-next state = continue $ state
+nextArtist :: AppState -> NextState
+nextArtist state = continue $ state
   & libraryArtists %~ listMoveDown
   & libraryAlbums .~ albs
   where
@@ -99,8 +106,8 @@ next state = continue $ state
     lib = state^.filteredLibrary.artistAlbums
     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
 
-previous :: AppState -> NextState
-previous state = continue $ state
+previousArtist :: AppState -> NextState
+previousArtist state = continue $ state
   & libraryArtists %~ listMoveUp
   & libraryAlbums .~ albs
   where
@@ -112,14 +119,27 @@ previous state = continue $ state
     lib = state^.filteredLibrary.artistAlbums
     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
 
--- next :: AppState -> NextState
--- next state = continue $ state & filteredLibrary %~ Library.libraryMoveDown
+nextAlbum :: AppState -> NextState
+nextAlbum state = continue $ state & libraryAlbums %~ listMoveDown
 
--- previous :: AppState -> NextState
--- previous state = continue $ state & filteredLibrary %~ Library.libraryMoveUp
+previousAlbum :: AppState -> NextState
+previousAlbum state = continue $ state & libraryAlbums %~ listMoveUp
 
--- libraryEvent :: V.Event -> AppState -> NextState
--- libraryEvent event state = continue =<< (\m -> state & filteredLibrary .~ m) <$> handleLibraryEvent event (state^.library)
+nextColumn :: AppState -> NextState
+nextColumn state = continue $ state & libraryActiveColumn .~ nextCol
+  where
+    nextCol = case (state^.libraryActiveColumn) of
+                ArtistsColumn -> AlbumsColumn
+                AlbumsColumn -> SongsColumn
+                SongsColumn -> SongsColumn
+
+previousColumn :: AppState -> NextState
+previousColumn state = continue $ state & libraryActiveColumn .~ prevCol
+  where
+    prevCol = case (state^.libraryActiveColumn) of
+                ArtistsColumn -> ArtistsColumn
+                AlbumsColumn -> ArtistsColumn
+                SongsColumn -> AlbumsColumn
 
 -- libraryEvent :: V.Event -> AppState -> NextState
 -- libraryEvent event state = continue =<< (\m -> state & filteredLibrary .~ m) <$> handleLibraryEvent event (state^.library)

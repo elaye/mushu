@@ -17,7 +17,7 @@ import Config
 
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, VtyEvent(..), UIName(..))
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists, filteredArtists)
-import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), library, filteredLibrary)
+import UI.Types (AppState(..), ViewType(..), ActiveColumn(..), playlist, activeView, helpActive, UIName(..), library, filteredLibrary, libraryActiveColumn)
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
 import qualified UI.Views.Playlist as PlaylistView
@@ -128,6 +128,7 @@ initialState playlist library = AppState
   , _libraryArtists = list (UIName "artists") (fromList (keys aas)) 1
   , _libraryAlbums = list (UIName "albums") (fromList (keys ((snd (elemAt 0 aas))^.albums))) 1
   , _librarySongs = list (UIName "songs") (fromList []) 1
+  , _libraryActiveColumn = ArtistsColumn
   , _helpActive = False
   }
   where

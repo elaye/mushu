@@ -204,20 +204,23 @@ mpdReq req = do
     Right r -> return r
 
 getArtists :: IO [M.Value]
-getArtists = (take 5) <$> (mpdReq $ M.list M.Artist Nothing)
+-- getArtists = (take 5) <$> (mpdReq $ M.list M.Artist Nothing)
+getArtists = mpdReq $ M.list M.Artist Nothing
 
 getArtistAlbums :: M.Artist -> IO [M.Value]
-getArtistAlbums artist = (take 5) <$> (mpdReq $ M.list M.Album (Just artist))
+-- getArtistAlbums artist = (take 5) <$> (mpdReq $ M.list M.Album (Just artist))
+getArtistAlbums artist = mpdReq $ M.list M.Album (Just artist)
 
 getArtistAlbumSongs :: M.Artist -> M.Album -> IO [M.Song]
-getArtistAlbumSongs artist album = (take 3) <$> (mpdReq req)
+-- getArtistAlbumSongs artist album = (take 3) <$> (mpdReq req)
+getArtistAlbumSongs artist album = mpdReq req
   where req = M.search (M.Artist =? artist <&> M.Album =? album)
 
 -- fetchLibrary ::(Show n, Eq n, IsString n) => IO (Library n)
 fetchLibrary :: n -> IO (Library n)
 fetchLibrary name = do
   artists <- getArtists
-  print artists
+  -- print artists
   let getAlbums a = fromList <$> (getArtistAlbums a)
   let getSongs ar al = fromList <$> (getArtistAlbumSongs ar al)
   let kvAlbum ar al = do
@@ -225,7 +228,7 @@ fetchLibrary name = do
         return (pack (M.toString al), (L.list "list-album-songs" ss 1))
   let kvArtist ar = do
         als <- getAlbums ar
-        print als
+        -- print als
         -- TODO: check that we really have an ordered list of unique keys
         -- let as = Map.fromDistinctAscList $ mapM (kvAlbum ar) als
         as <- Map.fromDistinctAscList <$> (sequence (map (kvAlbum ar) als))

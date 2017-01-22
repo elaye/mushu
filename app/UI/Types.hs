@@ -3,6 +3,7 @@
 module UI.Types
 ( AppState(..)
 , ViewType(..)
+, ActiveColumn(..)
 -- , config
 , activeView
 , playlist
@@ -14,6 +15,7 @@ module UI.Types
 , libraryArtists
 , libraryAlbums
 , librarySongs
+, libraryActiveColumn
 , filteredLibrary
 , VtyEvent(..)
 , UIName(..)
@@ -35,6 +37,8 @@ import qualified Network.MPD as M
 
 data ViewType = PlaylistView | LibraryView deriving Show
 
+data ActiveColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving Show
+
 data AppState = AppState
   { _playlist :: L.List UIName M.Song
   -- , _config :: Config
@@ -48,6 +52,7 @@ data AppState = AppState
   , _libraryArtists :: L.List UIName Text
   , _libraryAlbums :: L.List UIName Text
   , _librarySongs :: L.List UIName Text
+  , _libraryActiveColumn :: ActiveColumn
   -- , _filteredArtists :: L.List UIName M.Artist
   , _helpActive :: Bool
   }
