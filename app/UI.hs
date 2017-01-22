@@ -74,6 +74,8 @@ appEvent :: AppState -> BrickEvent UIName e -> NextState
 appEvent state event = case event of
     VtyEvent (V.EvKey (V.KChar '?') []) -> M.continue $ state & helpActive %~ not
     VtyEvent (V.EvKey (V.KChar 'p') []) -> toggle state
+    VtyEvent (V.EvKey (V.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
+    VtyEvent (V.EvKey (V.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
     -- NewMailEvent -> updateMails state
     ev -> case state^.activeView of
       PlaylistView -> PlaylistView.event state ev
