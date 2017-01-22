@@ -9,6 +9,8 @@ module UI.Widgets.Library
 , libraryMoveDown
 , Library(..)
 , ArtistAlbums(..)
+, artistAlbums
+, albums
 , mkWidget
 , attrs
 ) where
@@ -41,6 +43,8 @@ data ArtistAlbums = ArtistAlbums
   , _albumKeys :: V.Vector Text
   , _selectedAlbum :: Maybe Int
   } deriving (Show)
+
+makeLenses ''ArtistAlbums
 
 data Library n = Library
   { _artistAlbums :: Map ArtistName ArtistAlbums
@@ -141,38 +145,38 @@ drawArtistElements foc l drawElem = Widget Greedy Greedy $ do
             translateBy (Location (0, start)) $
             vBox $ V.toList drawnElements
 
-drawAlbumElements ::(Ord n, Show n)
-  => Bool
-  -- ^ Whether the artists column has focus
-  -> ArtistAlbums n
-  -- ^ The artists to be rendered
-  -> (Bool -> ArtistName -> Widget n)
-  -- ^ Rendering function, True for the selected element
-  -> Widget n
-drawAlbumElements foc l drawElem = Widget Greedy Greedy $ do
-  c <- getContext
-  let es = V.slice start num (l^.artistKeys)
-      idx = fromMaybe 0 (l^.selectedArtist)
+-- drawAlbumElements ::(Ord n, Show n)
+--   => Bool
+--   -- ^ Whether the artists column has focus
+--   -> ArtistAlbums n
+--   -- ^ The artists to be rendered
+--   -> (Bool -> ArtistName -> Widget n)
+--   -- ^ Rendering function, True for the selected element
+--   -> Widget n
+-- drawAlbumElements foc l drawElem = Widget Greedy Greedy $ do
+--   c <- getContext
+--   let es = V.slice start num (l^.artistKeys)
+--       idx = fromMaybe 0 (l^.selectedArtist)
 
-      start = max 0 $ idx - numPerHeight + 1
-      num = min (numPerHeight * 2) (V.length (l^.artistKeys) - start)
+--       start = max 0 $ idx - numPerHeight + 1
+--       num = min (numPerHeight * 2) (V.length (l^.artistKeys) - start)
 
-      numPerHeight = c^.availHeightL
+--       numPerHeight = c^.availHeightL
 
-      drawnElements = flip V.imap es $ \i e ->
-          let isSelected = Just (i + start) == l^.selectedArtist
-              elemWidget = drawElem isSelected e
-              selItemAttr = if foc
-                            then withDefAttr librarySelectedFocusedAttr
-                            else withDefAttr librarySelectedAttr
-              makeVisible = if isSelected
-                            then visible . selItemAttr
-                            else id
-          in makeVisible elemWidget
+--       drawnElements = flip V.imap es $ \i e ->
+--           let isSelected = Just (i + start) == l^.selectedArtist
+--               elemWidget = drawElem isSelected e
+--               selItemAttr = if foc
+--                             then withDefAttr librarySelectedFocusedAttr
+--                             else withDefAttr librarySelectedAttr
+--               makeVisible = if isSelected
+--                             then visible . selItemAttr
+--                             else id
+--           in makeVisible elemWidget
 
-  render $ viewport (l^.name) Vertical $
-            translateBy (Location (0, start)) $
-            vBox $ V.toList drawnElements
+--   render $ viewport (l^.name) Vertical $
+--             translateBy (Location (0, start)) $
+--             vBox $ V.toList drawnElements
 
 -- | Move the map selected index up by one. (Moves the cursor up,
 -- subtracts one from the index.)

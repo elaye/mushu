@@ -6,13 +6,14 @@ module UI.Types
 -- , config
 , activeView
 , playlist
--- , artists
 , helpActive
 , filterActive
 , filterFocused
 , filterEditor
--- , filteredArtists
 , library
+, libraryArtists
+, libraryAlbums
+, librarySongs
 , filteredLibrary
 , VtyEvent(..)
 , UIName(..)
@@ -44,6 +45,9 @@ data AppState = AppState
   -- , _artists :: L.List UIName M.Artist
   , _library :: Library UIName
   , _filteredLibrary :: Library UIName
+  , _libraryArtists :: L.List UIName Text
+  , _libraryAlbums :: L.List UIName Text
+  , _librarySongs :: L.List UIName Text
   -- , _filteredArtists :: L.List UIName M.Artist
   , _helpActive :: Bool
   }

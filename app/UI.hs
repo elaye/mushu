@@ -7,6 +7,7 @@ module UI
 import Control.Monad (forever)
 
 import Data.Default (def)
+import Data.Map.Strict (elemAt)
 
 import ClassyPrelude
 import Data.List ((!!))
@@ -25,6 +26,7 @@ import qualified UI.Views.Help as HelpView
 import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Playlist as Playlist
 import qualified UI.Widgets.Library as Library
+import UI.Widgets.Library (artistAlbums, albums)
 import UI.Widgets.Library (Library(..))
 
 import qualified Graphics.Vty as V
@@ -123,8 +125,13 @@ initialState playlist library = AppState
   , _activeView = LibraryView
   , _library = library
   , _filteredLibrary = library
+  , _libraryArtists = list (UIName "artists") (fromList (keys aas)) 1
+  , _libraryAlbums = list (UIName "albums") (fromList (keys ((snd (elemAt 0 aas))^.albums))) 1
+  , _librarySongs = list (UIName "songs") (fromList []) 1
   , _helpActive = False
   }
+  where
+    aas = library^.artistAlbums
 
 attributesMap :: AttrMap
 attributesMap = attrMap V.defAttr $ concat
