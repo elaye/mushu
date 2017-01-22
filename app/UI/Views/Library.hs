@@ -27,7 +27,7 @@ import Brick.Widgets.List
   , listElementsL
   , listSelectedElement
   )
-import Brick.Widgets.Core ((<+>), str, withAttr, padLeft, padRight, hLimit)
+import Brick.Widgets.Core ((<+>), (<=>), str, withAttr, padLeft, padRight, hLimit)
 import Brick.Widgets.Center (hCenter)
 import Brick.AttrMap (AttrName)
 import Brick.Util (clamp, fg, on)
@@ -44,9 +44,12 @@ import UI.Types (AppState(..), UIName(..), ActiveColumn(..), library, libraryAct
 type NextState = EventM UIName (Next AppState)
 
 draw :: AppState -> [Widget UIName]
-draw state = Main.draw state $ artistsWidget <+> albumsWidget <+> songsWidget
+draw state = Main.draw state $ header <=> columns
   -- where widget = Library.mkWidget (state^.filteredLibrary) 
   where
+    header = title "Artists" <+> title "Albums" <+> title "Songs"
+    title t = padRight Max $ str t
+    columns = artistsWidget <+> albumsWidget <+> songsWidget
     artistsWidget = renderList (listDrawElement (activeColumn == ArtistsColumn)) True (state^.libraryArtists)
     albumsWidget = renderList (listDrawElement (activeColumn == AlbumsColumn)) True (state^.libraryAlbums)
     songsWidget = renderList (listDrawElement (activeColumn == SongsColumn)) True (state^.librarySongs)
