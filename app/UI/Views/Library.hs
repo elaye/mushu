@@ -29,6 +29,7 @@ import Brick.Widgets.List
   )
 import Brick.Widgets.Core ((<+>), (<=>), str, withAttr, padLeft, padRight, hLimit)
 import Brick.Widgets.Center (hCenter)
+import Brick.Widgets.Border (hBorder, vBorder)
 import Brick.AttrMap (AttrName)
 import Brick.Util (clamp, fg, on)
 import Brick.Main (continue, halt)
@@ -44,15 +45,17 @@ import UI.Types (AppState(..), UIName(..), ActiveColumn(..), library, libraryAct
 type NextState = EventM UIName (Next AppState)
 
 draw :: AppState -> [Widget UIName]
-draw state = Main.draw state $ header <=> columns
-  -- where widget = Library.mkWidget (state^.filteredLibrary) 
+draw state = Main.draw state $ columns
   where
-    header = title "Artists" <+> title "Albums" <+> title "Songs"
-    title t = padRight Max $ str t
-    columns = artistsWidget <+> albumsWidget <+> songsWidget
-    artistsWidget = renderList (listDrawElement (activeColumn == ArtistsColumn)) True (state^.libraryArtists)
-    albumsWidget = renderList (listDrawElement (activeColumn == AlbumsColumn)) True (state^.libraryAlbums)
-    songsWidget = renderList (listDrawElement (activeColumn == SongsColumn)) True (state^.librarySongs)
+    columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+    column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
+    title t = (padRight Max $ str t) <=> hBorder
+
+    artistsWidget = columnWidget ArtistsColumn (state^.libraryArtists)
+    albumsWidget = columnWidget AlbumsColumn (state^.libraryAlbums)
+    songsWidget = columnWidget SongsColumn (state^.librarySongs)
+
+    columnWidget column els = renderList (listDrawElement (activeColumn == column)) True els
     activeColumn = state^.libraryActiveColumn
 
 listDrawElement :: Bool -> Bool -> Text -> Widget UIName
