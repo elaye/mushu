@@ -3,9 +3,10 @@
 module UI.Views.Library
 ( draw
 , event
+, attrs
 ) where
 
-import ClassyPrelude hiding ((<>))
+import ClassyPrelude hiding ((<>), on)
 import Data.Monoid ((<>))
 import Data.Map.Strict (elemAt)
 import Data.Vector ((!))
@@ -29,7 +30,7 @@ import Brick.Widgets.List
 import Brick.Widgets.Core ((<+>), str, withAttr, padLeft, padRight, hLimit)
 import Brick.Widgets.Center (hCenter)
 import Brick.AttrMap (AttrName)
-import Brick.Util (clamp)
+import Brick.Util (clamp, fg, on)
 import Brick.Main (continue, halt)
 import Lens.Micro.Platform ((^.), (%~), (&), (.~))
 
@@ -46,21 +47,22 @@ draw :: AppState -> [Widget UIName]
 draw state = Main.draw state $ artistsWidget <+> albumsWidget <+> songsWidget
   -- where widget = Library.mkWidget (state^.filteredLibrary) 
   where
-    artistsWidget = renderList listDrawElement True (state^.libraryArtists)
-    albumsWidget = renderList listDrawElement True (state^.libraryAlbums)
-    songsWidget = renderList listDrawElement True (state^.librarySongs)
+    artistsWidget = renderList (listDrawElement (activeColumn == ArtistsColumn)) True (state^.libraryArtists)
+    albumsWidget = renderList (listDrawElement (activeColumn == AlbumsColumn)) True (state^.libraryAlbums)
+    songsWidget = renderList (listDrawElement (activeColumn == SongsColumn)) True (state^.librarySongs)
+    activeColumn = state^.libraryActiveColumn
 
-listDrawElement :: Bool -> Text -> Widget UIName
-listDrawElement sel el = hCenter $ formatListElement sel False $ pad $ str (unpack el)
+listDrawElement :: Bool -> Bool -> Text -> Widget UIName
+listDrawElement colActive sel el = hCenter $ formatListElement colActive sel $ pad $ str (unpack el)
   where
     pad w = padLeft Max $ padRight Max $ w
 
 formatListElement :: Bool -> Bool -> Widget UIName -> Widget UIName
-formatListElement playing sel widget = withAttr attr widget
-  where attr = case playing of
+formatListElement colActive sel widget = withAttr attr widget
+  where attr = case colActive of
                 True -> case sel of
-                  True -> selPlayingAttrName
-                  False -> playingAttrName
+                  True -> selActiveColAttrName
+                  False -> activeColAttrName
                 False -> case sel of
                   True -> selAttrName
                   False -> listAttr
@@ -68,14 +70,18 @@ formatListElement playing sel widget = withAttr attr widget
 selAttrName :: AttrName
 selAttrName = listSelectedAttr <> "custom"
 
-newAttrName :: AttrName
-newAttrName = listAttr <> "new"
+activeColAttrName :: AttrName
+activeColAttrName = listAttr <> "active-column"
 
-playingAttrName :: AttrName
-playingAttrName = listAttr <> "playing"
+selActiveColAttrName :: AttrName
+selActiveColAttrName = listSelectedAttr <> "selected-active-column"
 
-selPlayingAttrName :: AttrName
-selPlayingAttrName = listAttr <> "selected-playing"
+attrs :: [(AttrName, V.Attr)]
+attrs = [ (selAttrName, V.brightBlack `on` V.black)
+        , (selActiveColAttrName, V.green `on` V.black)
+        , (listAttr, fg V.brightBlack)
+        , (activeColAttrName, fg V.white)
+        ]
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
 event state (VtyEvent e) = case e of
@@ -97,32 +103,6 @@ event state (VtyEvent e) = case e of
     ev -> continue state
   where activeColumn = state^.libraryActiveColumn
 event state _ = continue state
-
--- nextArtist :: AppState -> NextState
--- nextArtist state = continue $ state
---   & libraryArtists %~ listMoveDown
---   & libraryAlbums .~ albs
---   where
---     arts = state^.libraryArtists.listElementsL
---     len = length arts
---     i = fromMaybe 0 (state^.libraryArtists.listSelectedL)
---     j = clamp 0 (len - 1) (i + 1)
---     nextArtist =  arts ! j
---     lib = state^.filteredLibrary.artistAlbums
---     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
-
--- previousArtist :: AppState -> NextState
--- previousArtist state = continue $ state
---   & libraryArtists %~ listMoveUp
---   & libraryAlbums .~ albs
---   where
---     arts = state^.libraryArtists.listElementsL
---     len = length arts
---     i = fromMaybe 0 (state^.libraryArtists.listSelectedL)
---     j = clamp 0 (len - 1) (i - 1)
---     nextArtist =  arts ! j
---     lib = state^.filteredLibrary.artistAlbums
---     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
 
 nextArtist :: AppState -> NextState
 nextArtist state = continue $ updateSongs $ updateAlbums (state & libraryArtists %~ listMoveDown)

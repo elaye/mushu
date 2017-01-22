@@ -140,6 +140,7 @@ attributesMap = attrMap V.defAttr $ concat
     , Playlist.attrs
     , Status.attrs
     , Library.attrs
+    , LibraryView.attrs
     -- , Explorer.attrs
     ]
 

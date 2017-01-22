@@ -37,7 +37,7 @@ import qualified Network.MPD as M
 
 data ViewType = PlaylistView | LibraryView deriving Show
 
-data ActiveColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving Show
+data ActiveColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
 
 data AppState = AppState
   { _playlist :: L.List UIName M.Song
