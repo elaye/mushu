@@ -22,6 +22,7 @@ import Brick.Widgets.List
   , listMoveDown
   , listSelectedL
   , listElementsL
+  , listSelectedElement
   )
 import Brick.Widgets.Core ((<+>), str, withAttr, padLeft, padRight, hLimit)
 import Brick.Widgets.Center (hCenter)
@@ -93,31 +94,45 @@ event state (VtyEvent e) = case e of
   where activeColumn = state^.libraryActiveColumn
 event state _ = continue state
 
+-- nextArtist :: AppState -> NextState
+-- nextArtist state = continue $ state
+--   & libraryArtists %~ listMoveDown
+--   & libraryAlbums .~ albs
+--   where
+--     arts = state^.libraryArtists.listElementsL
+--     len = length arts
+--     i = fromMaybe 0 (state^.libraryArtists.listSelectedL)
+--     j = clamp 0 (len - 1) (i + 1)
+--     nextArtist =  arts ! j
+--     lib = state^.filteredLibrary.artistAlbums
+--     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
+
+-- previousArtist :: AppState -> NextState
+-- previousArtist state = continue $ state
+--   & libraryArtists %~ listMoveUp
+--   & libraryAlbums .~ albs
+--   where
+--     arts = state^.libraryArtists.listElementsL
+--     len = length arts
+--     i = fromMaybe 0 (state^.libraryArtists.listSelectedL)
+--     j = clamp 0 (len - 1) (i - 1)
+--     nextArtist =  arts ! j
+--     lib = state^.filteredLibrary.artistAlbums
+--     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
+
 nextArtist :: AppState -> NextState
-nextArtist state = continue $ state
-  & libraryArtists %~ listMoveDown
-  & libraryAlbums .~ albs
-  where
-    arts = state^.libraryArtists.listElementsL
-    len = length arts
-    i = fromMaybe 0 (state^.libraryArtists.listSelectedL)
-    j = clamp 0 (len - 1) (i + 1)
-    nextArtist =  arts ! j
-    lib = state^.filteredLibrary.artistAlbums
-    albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
+nextArtist state = continue $ updateAlbums (state & libraryArtists %~ listMoveDown)
 
 previousArtist :: AppState -> NextState
-previousArtist state = continue $ state
-  & libraryArtists %~ listMoveUp
-  & libraryAlbums .~ albs
+previousArtist state = continue $ updateAlbums (state & libraryArtists %~ listMoveUp)
+
+updateAlbums :: AppState -> AppState
+updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") (fromList newAlbums) 1)
   where
-    arts = state^.libraryArtists.listElementsL
-    len = length arts
-    i = fromMaybe 0 (state^.libraryArtists.listSelectedL)
-    j = clamp 0 (len - 1) (i - 1)
-    nextArtist =  arts ! j
-    lib = state^.filteredLibrary.artistAlbums
-    albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
+    selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
+    newAlbums = case selArtist of
+      Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
+      Nothing -> []
 
 nextAlbum :: AppState -> NextState
 nextAlbum state = continue $ state & libraryAlbums %~ listMoveDown
