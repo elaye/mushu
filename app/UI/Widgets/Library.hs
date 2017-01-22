@@ -37,9 +37,9 @@ import Data.Vector ((!))
 type ArtistName = Text
 type AlbumName = Text
 
-data ArtistAlbums = ArtistAlbums
+data ArtistAlbums n = ArtistAlbums
   -- { _albums :: Map AlbumName (Vector M.Song)
-  { _albums :: Map AlbumName (L.List Text M.Song)
+  { _albums :: Map AlbumName (L.List n M.Song)
   , _albumKeys :: V.Vector Text
   , _selectedAlbum :: Maybe Int
   } deriving (Show)
@@ -47,7 +47,7 @@ data ArtistAlbums = ArtistAlbums
 makeLenses ''ArtistAlbums
 
 data Library n = Library
-  { _artistAlbums :: Map ArtistName ArtistAlbums
+  { _artistAlbums :: Map ArtistName (ArtistAlbums n)
   , _artistKeys :: V.Vector Text
   , _selectedArtist :: Maybe Int
   , _name :: n
@@ -216,8 +216,8 @@ getArtistAlbumSongs :: M.Artist -> M.Album -> IO [M.Song]
 getArtistAlbumSongs artist album = mpdReq req
   where req = M.search (M.Artist =? artist <&> M.Album =? album)
 
--- fetchLibrary ::(Show n, Eq n, IsString n) => IO (Library n)
-fetchLibrary :: n -> IO (Library n)
+fetchLibrary ::(Show n, Eq n, IsString n) => n -> IO (Library n)
+-- fetchLibrary :: n -> IO (Library n)
 fetchLibrary name = do
   artists <- getArtists
   -- print artists

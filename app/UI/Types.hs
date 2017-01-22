@@ -62,5 +62,8 @@ data VtyEvent = VtyEvent V.Event
 
 data UIName = UIName Text deriving (Show, Eq, Ord)
 
+instance IsString UIName where
+  fromString s = UIName (pack s)
+
 makeLenses ''AppState
  

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
 module UI.Views.Library
 ( draw
 , event
@@ -10,6 +11,7 @@ import Data.Map.Strict (elemAt)
 import Data.Vector ((!))
 
 import qualified UI.Views.Main as Main
+import Network.MPD (Song(..), Metadata(..), toString)
 
 import Brick.Types (Widget(..), Padding(..), BrickEvent(..), EventM, Next)
 import Brick.Widgets.List
@@ -80,9 +82,11 @@ event state (VtyEvent e) = case e of
     (V.EvKey (V.KChar 'j') []) -> case activeColumn of
       ArtistsColumn -> nextArtist state
       AlbumsColumn -> nextAlbum state
+      SongsColumn -> nextSong state
     (V.EvKey (V.KChar 'k') []) -> case activeColumn of
       ArtistsColumn -> previousArtist state
       AlbumsColumn -> previousAlbum state
+      SongsColumn -> previousSong state
     (V.EvKey (V.KChar 'l') []) -> nextColumn state
     (V.EvKey (V.KChar 'h') []) -> previousColumn state
     -- (V.EvKey V.KEnter []) -> play state
@@ -121,10 +125,10 @@ event state _ = continue state
 --     albs = list (UIName "albums") (fromList (maybe [] (\a -> keys (a^.albums)) (lookup nextArtist lib))) 1
 
 nextArtist :: AppState -> NextState
-nextArtist state = continue $ updateAlbums (state & libraryArtists %~ listMoveDown)
+nextArtist state = continue $ updateSongs $ updateAlbums (state & libraryArtists %~ listMoveDown)
 
 previousArtist :: AppState -> NextState
-previousArtist state = continue $ updateAlbums (state & libraryArtists %~ listMoveUp)
+previousArtist state = continue $ updateSongs $ updateAlbums (state & libraryArtists %~ listMoveUp)
 
 updateAlbums :: AppState -> AppState
 updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") (fromList newAlbums) 1)
@@ -134,11 +138,32 @@ updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") (fromList 
       Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
       Nothing -> []
 
+updateSongs :: AppState -> AppState
+updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSongs)
+  where
+    tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
+    selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
+    selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbums)
+    newSongs = case selArtist of
+      -- Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
+      Just a -> maybe (list (UIName "songs") (fromList []) 1) newAlbumSongs (lookup a (state^.filteredLibrary.artistAlbums))
+      Nothing -> list (UIName "songs") (fromList []) 1
+    newAlbumSongs aa =  case selAlbum of
+      Just al -> fromMaybe (list (UIName "songs") (fromList []) 1) (lookup al (aa^.albums))
+      Nothing -> list (UIName "songs") (fromList []) 1
+
+
 nextAlbum :: AppState -> NextState
 nextAlbum state = continue $ state & libraryAlbums %~ listMoveDown
 
 previousAlbum :: AppState -> NextState
 previousAlbum state = continue $ state & libraryAlbums %~ listMoveUp
+
+nextSong :: AppState -> NextState
+nextSong state = continue $ state & librarySongs %~ listMoveDown
+
+previousSong :: AppState -> NextState
+previousSong state = continue $ state & librarySongs %~ listMoveUp
 
 nextColumn :: AppState -> NextState
 nextColumn state = continue $ state & libraryActiveColumn .~ nextCol
