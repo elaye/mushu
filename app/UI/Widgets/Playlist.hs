@@ -34,7 +34,7 @@ mkWidget :: List UIName Song -> Widget UIName
 mkWidget playlist = renderList listDrawElement True playlist
 
 listDrawElement :: Bool -> Song -> Widget UIName
-listDrawElement sel song = hCenter $ formatListElement sel False $ artist <+> track <+> title <+> album <+> time
+listDrawElement sel song = hCenter $ formatListElement False sel $ artist <+> track <+> title <+> album <+> time
   where
     -- pad w = padLeft Max $ padRight Max $ w
     -- frm = padRight (Pad 1) $ hLimit 15 $ str $ (formatFrom mail) ++ "          "
@@ -56,27 +56,27 @@ formatListElement :: Bool -> Bool -> Widget UIName -> Widget UIName
 formatListElement playing sel widget = withAttr attr widget
   where attr = case playing of
                 True -> case sel of
-                  True -> selPlayingAttrName
-                  False -> playingAttrName
+                  True -> playlistSelPlayingAttrName
+                  False -> playlistPlayingAttrName
                 False -> case sel of
-                  True -> selAttrName
-                  False -> listAttr
+                  True -> playlistSelAttrName
+                  False -> playlistListAttrName
 
-selAttrName :: AttrName
-selAttrName = listSelectedAttr <> "custom"
+playlistListAttrName :: AttrName
+playlistListAttrName = listAttr <> "playlist"
 
-newAttrName :: AttrName
-newAttrName = listAttr <> "new"
+playlistSelAttrName :: AttrName
+playlistSelAttrName = listSelectedAttr <> "playlist-selected"
 
-playingAttrName :: AttrName
-playingAttrName = listAttr <> "playing"
+playlistPlayingAttrName :: AttrName
+playlistPlayingAttrName = listAttr <> "playlist-playing"
 
-selPlayingAttrName :: AttrName
-selPlayingAttrName = listAttr <> "selected-playing"
+playlistSelPlayingAttrName :: AttrName
+playlistSelPlayingAttrName = listSelectedAttr <> "playlist-selected-playing"
 
 attrs :: [(AttrName, V.Attr)]
-attrs = [ (selAttrName, fg V.black)
-        , (newAttrName, V.green `on` V.black)
-        , (playingAttrName, fg V.brightBlack)
-        , (selPlayingAttrName, V.brightBlack `on` V.black)
+attrs = [ (playlistListAttrName, fg V.white)
+        , (playlistPlayingAttrName, V.withStyle (fg V.white) V.bold)
+        , (playlistSelAttrName, V.withStyle (V.green `on` V.black) V.standout)
+        , (playlistSelPlayingAttrName, V.withStyle (V.withStyle (V.green `on` V.black) V.standout) V.bold)
         ]
