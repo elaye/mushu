@@ -17,7 +17,7 @@ import Config
 
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, VtyEvent(..), UIName(..))
 -- import UI.Types (AppState(..), ViewType(..), playlist, activeView, helpActive, UIName(..), artists, filteredArtists)
-import UI.Types (AppState(..), ViewType(..), ActiveColumn(..), playlist, activeView, helpActive, UIName(..), library, filteredLibrary, libraryActiveColumn)
+import UI.Types (AppState(..), ViewType(..), ActiveColumn(..), playlist, activeView, helpActive, UIName(..), library, filteredLibrary, libraryActiveColumn, filterFocused)
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
 import qualified UI.Views.Playlist as PlaylistView
@@ -73,16 +73,20 @@ drawUI state = if state^.helpActive
 
 -- appEvent :: AppState -> BrickEvent UIName VtyEvent -> NextState
 appEvent :: AppState -> BrickEvent UIName e -> NextState
-appEvent state event = case event of
+appEvent state event = case state^.filterFocused of
+  True -> handleViewEvent state event
+  False -> case event of
     VtyEvent (Vty.EvKey (Vty.KChar '?') []) -> M.continue $ state & helpActive %~ not
     VtyEvent (Vty.EvKey (Vty.KChar 'p') []) -> toggle state
     VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
     VtyEvent (Vty.EvKey (Vty.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
     -- NewMailEvent -> updateMails state
-    ev -> case state^.activeView of
-      PlaylistView -> PlaylistView.event state ev
-      LibraryView -> LibraryView.event state ev
+    ev -> handleViewEvent state ev
 
+handleViewEvent :: AppState -> BrickEvent UIName e -> NextState
+handleViewEvent state event = case state^.activeView of
+  PlaylistView -> PlaylistView.event state event
+  LibraryView -> LibraryView.event state event
 
 toggle :: AppState -> NextState
 toggle state = do
