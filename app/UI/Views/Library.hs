@@ -9,7 +9,8 @@ module UI.Views.Library
 import ClassyPrelude hiding ((<>), on)
 import Data.Monoid ((<>))
 import Data.Map.Strict (elemAt)
-import Data.Vector ((!))
+import qualified Data.Vector as V
+import Data.Vector ((!), empty)
 
 import qualified UI.Views.Main as Main
 import Network.MPD (Song(..), Metadata(..), toString)
@@ -35,10 +36,12 @@ import Brick.Util (clamp, fg, on)
 import Brick.Main (continue, halt)
 import Lens.Micro.Platform ((^.), (%~), (&), (.~))
 
-import qualified Graphics.Vty as V
+import qualified Graphics.Vty as Vty
 
 import qualified UI.Widgets.Library as Library
-import UI.Widgets.Library (albums, artistAlbums)
+-- import UI.Widgets.Library (albums, artistAlbums)
+
+import Library (Library(..), albumsL, artistsL)
 
 import UI.Types (AppState(..), UIName(..), ActiveColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs)
 
@@ -82,29 +85,29 @@ activeColAttrName = listAttr <> "active-column"
 selActiveColAttrName :: AttrName
 selActiveColAttrName = listSelectedAttr <> "selected-active-column"
 
-attrs :: [(AttrName, V.Attr)]
-attrs = [ (selAttrName, V.brightBlack `on` V.black)
-        , (selActiveColAttrName, V.green `on` V.black)
-        , (listAttr, fg V.brightBlack)
-        , (activeColAttrName, fg V.white)
+attrs :: [(AttrName, Vty.Attr)]
+attrs = [ (selAttrName, Vty.brightBlack `on` Vty.black)
+        , (selActiveColAttrName, Vty.green `on` Vty.black)
+        , (listAttr, fg Vty.brightBlack)
+        , (activeColAttrName, fg Vty.white)
         ]
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
 event state (VtyEvent e) = case e of
-    (V.EvKey (V.KChar 'j') []) -> case activeColumn of
+    (Vty.EvKey (Vty.KChar 'j') []) -> case activeColumn of
       ArtistsColumn -> nextArtist state
       AlbumsColumn -> nextAlbum state
       SongsColumn -> nextSong state
-    (V.EvKey (V.KChar 'k') []) -> case activeColumn of
+    (Vty.EvKey (Vty.KChar 'k') []) -> case activeColumn of
       ArtistsColumn -> previousArtist state
       AlbumsColumn -> previousAlbum state
       SongsColumn -> previousSong state
-    (V.EvKey (V.KChar 'l') []) -> nextColumn state
-    (V.EvKey (V.KChar 'h') []) -> previousColumn state
-    -- (V.EvKey V.KEnter []) -> play state
-    (V.EvKey (V.KChar 'q') []) -> halt state
-    -- VtyEvent (V.EvKey (V.KChar '1') []) -> changeView state 1
-    {-V.EvKey (V.KChar '-') [] -> delete-}
+    (Vty.EvKey (Vty.KChar 'l') []) -> nextColumn state
+    (Vty.EvKey (Vty.KChar 'h') []) -> previousColumn state
+    -- (Vty.EvKey Vty.KEnter []) -> play state
+    (Vty.EvKey (Vty.KChar 'q') []) -> halt state
+    -- VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> changeView state 1
+    {-Vty.EvKey (Vty.KChar '-') [] -> delete-}
     -- ev -> listEvent ev state
     ev -> continue state
   where activeColumn = state^.libraryActiveColumn
@@ -117,26 +120,37 @@ previousArtist :: AppState -> NextState
 previousArtist state = continue $ updateSongs $ updateAlbums (state & libraryArtists %~ listMoveUp)
 
 updateAlbums :: AppState -> AppState
-updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") (fromList newAlbums) 1)
+updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 1)
   where
     selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
     newAlbums = case selArtist of
-      Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
-      Nothing -> []
+      -- Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
+      Just a -> fromMaybe V.empty (lookup a (state^.filteredLibrary.artistsL))
+      Nothing -> V.empty
 
 updateSongs :: AppState -> AppState
-updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSongs)
+updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSongsWidget)
   where
     tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
-    selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
     selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbums)
-    newSongs = case selArtist of
-      -- Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
-      Just a -> maybe (list (UIName "songs") (fromList []) 1) newAlbumSongs (lookup a (state^.filteredLibrary.artistAlbums))
-      Nothing -> list (UIName "songs") (fromList []) 1
-    newAlbumSongs aa =  case selAlbum of
-      Just al -> fromMaybe (list (UIName "songs") (fromList []) 1) (lookup al (aa^.albums))
-      Nothing -> list (UIName "songs") (fromList []) 1
+    newSongsWidget = list (UIName "songs") newSongs 1
+    newSongs = case selAlbum of
+      Just a -> fromMaybe V.empty (lookup a (state^.filteredLibrary.albumsL))
+      Nothing -> V.empty
+
+-- updateSongs :: AppState -> AppState
+-- updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSongs)
+--   where
+--     tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
+--     selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
+--     selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbums)
+--     newSongs = case selArtist of
+--       -- Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
+--       Just a -> maybe (list (UIName "songs") (fromList []) 1) newAlbumSongs (lookup a (state^.filteredLibrary.artistAlbums))
+--       Nothing -> list (UIName "songs") (fromList []) 1
+--     newAlbumSongs aa =  case selAlbum of
+--       Just al -> fromMaybe (list (UIName "songs") (fromList []) 1) (lookup al (aa^.albums))
+--       Nothing -> list (UIName "songs") (fromList []) 1
 
 
 nextAlbum :: AppState -> NextState
@@ -167,5 +181,5 @@ previousColumn state = continue $ state & libraryActiveColumn .~ prevCol
                 AlbumsColumn -> ArtistsColumn
                 SongsColumn -> AlbumsColumn
 
--- libraryEvent :: V.Event -> AppState -> NextState
+-- libraryEvent :: Vty.Event -> AppState -> NextState
 -- libraryEvent event state = continue =<< (\m -> state & filteredLibrary .~ m) <$> handleLibraryEvent event (state^.library)
