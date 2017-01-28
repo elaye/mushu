@@ -8,7 +8,6 @@ import ClassyPrelude
 import Config
 import Library
 import UI.Types
--- import Library (Library, artistsL, albumsL, fetchLibrary)
 
 import Control.Monad (void, forever)
 import Lens.Micro.Platform ((^.), (&), (.~), (%~))
@@ -19,7 +18,6 @@ import Data.List ((!!))
 import Data.HashMap.Strict (elems)
 import qualified Data.Vector as V
 
--- import UI.Types (AppState(..), ViewType(..), ActiveColumn(..), playlist, activeView, helpActive, UIName(..), library, filteredLibrary, libraryActiveColumn, filterFocused)
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
 import qualified UI.Views.Playlist as PlaylistView
@@ -37,16 +35,8 @@ import qualified Brick.Main as M
 
 import qualified Graphics.Vty as Vty
 
-import qualified Network.MPD as MPD
-import Network.MPD
-  ( withMPD
-  , playlistInfo
-  , Song(..)
-  , Metadata(..)
-  , Artist
-  )
-
-import MPD (togglePlayPause)
+import Network.MPD (Song)
+import MPD (togglePlayPause, fetchPlaylist)
 
 type NextState = EventM UIName (Next AppState)
 
@@ -72,29 +62,11 @@ handleViewEvent state event = case state^.activeView of
   PlaylistView -> PlaylistView.event state event
   LibraryView -> LibraryView.event state event
 
--- toggle :: AppState -> NextState
--- toggle state = do
---   resStatus <- liftIO $ withMPD status
---   case resStatus of
---     Left _ -> M.continue state
---     Right st -> do
---       case (stState st) of
---         Playing -> do
---           _ <- liftIO $ withMPD $ pause True
---           M.continue state
---         Stopped -> do
---           _ <- liftIO $ withMPD $ play Nothing
---           M.continue state
---         Paused -> do
---           _ <- liftIO $ withMPD $ pause False
---           M.continue state
-
 updatePlaylist :: AppState -> NextState
 updatePlaylist state = do
-  res <- liftIO $ withMPD $ playlistInfo Nothing
-  case res of
-    Left err -> M.continue state
-    Right songs -> M.continue $ state & playlist .~ (list (UIName "playlist") (fromList songs) 1)
+  songs <- liftIO $ fetchPlaylist
+  let playlistWidget = list (UIName "playlist") (fromList songs) 1
+  M.continue $ state & playlist .~ playlistWidget
 
 initialState :: [Song] -> Library -> AppState
 initialState playlist library = AppState
@@ -117,32 +89,25 @@ initialState playlist library = AppState
 
 attributesMap :: AttrMap
 attributesMap = attrMap Vty.defAttr $ concat
-    [ Utils.attrs
-    , Playlist.attrs
-    , Status.attrs
-    , LibraryView.attrs
-    ]
+  [ Utils.attrs
+  , Playlist.attrs
+  , Status.attrs
+  , LibraryView.attrs
+  ]
 
 app :: M.App AppState e UIName
-app =
-    M.App { M.appDraw = drawUI
-          , M.appChooseCursor = M.showFirstCursor
-          , M.appHandleEvent = appEvent
-          , M.appStartEvent = return
-          , M.appAttrMap = const attributesMap
-          -- , M.appLiftVtyEvent = VtyEvent
-          }
-
-getPlaylist :: IO [Song]
-getPlaylist = do
-  res <- withMPD $ playlistInfo Nothing
-  case res of
-    Left err -> print "Err while getting list of songs" >> return []
-    Right songs -> return songs
+app = M.App
+  { M.appDraw = drawUI
+  , M.appChooseCursor = M.showFirstCursor
+  , M.appHandleEvent = appEvent
+  , M.appStartEvent = return
+  , M.appAttrMap = const attributesMap
+  -- , M.appLiftVtyEvent = VtyEvent
+  }
 
 start :: IO ()
 start = do
-  playlist <- getPlaylist
+  playlist <- fetchPlaylist
   library <- fetchLibrary
   let initState = initialState playlist library
   void $ M.defaultMain app initState
