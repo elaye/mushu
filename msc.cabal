@@ -35,6 +35,8 @@ executable msc
                       ,unordered-containers
                       ,brick
                       ,text-zipper
+                      ,microlens
+                      ,microlens-th
                       ,microlens-platform >= 0.3.1.0
                       ,vty >= 5.5.0
                       ,process
@@ -43,6 +45,7 @@ executable msc
                       ,data-default
                       ,filepath
                       ,directory >= 1.2.5.0
+                      ,template-haskell >= 2.10
   default-language:    Haskell2010
   extensions:         NoImplicitPrelude
 
