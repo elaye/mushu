@@ -4,6 +4,8 @@
 module Library
 ( fetchLibrary
 , Library(..)
+, ArtistName
+, AlbumName
 , artistsL
 , albumsL
 ) where
