@@ -14,6 +14,7 @@ import Lens.Micro.Platform ((^.), (&), (.~), (%~))
 
 import Data.Default (def)
 import Data.Map.Strict (elemAt)
+import qualified Data.Set as Set
 import Data.List ((!!))
 import Data.HashMap.Strict (elems)
 import qualified Data.Vector as V
@@ -85,7 +86,7 @@ initialState playlist library = AppState
   }
   where
     artists = library^.artistsL
-    firstArtistAlbums = snd $ elemAt 0 artists
+    firstArtistAlbums = V.fromList . Set.toAscList $ snd $ elemAt 0 artists
 
 attributesMap :: AttrMap
 attributesMap = attrMap Vty.defAttr $ concat

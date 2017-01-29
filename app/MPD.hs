@@ -2,6 +2,7 @@ module MPD
 ( currentSong
 , togglePlayPause
 , fetchPlaylist
+, fetchAllSongs
 , fetchAllArtists
 , fetchArtistAlbums
 , fetchArtistAlbumSongs
@@ -24,6 +25,8 @@ import Network.MPD
   , playlistInfo
   , list
   , search
+  , find
+  , anything
   , (=?), (<&>)
   )
 import qualified Network.MPD as M
@@ -64,6 +67,10 @@ fetchArtistAlbums artist = do
 fetchArtistAlbumSongs :: Artist -> Album -> IO [Song]
 fetchArtistAlbumSongs artist album = mpdReq req
   where req = search (Artist =? artist <&> Album =? album)
+
+fetchAllSongs :: IO [Song]
+fetchAllSongs = mpdReq $ search (Artist =? fromString "")
+-- fetchAllSongs = mpdReq $ M.find anything
 
 fetchPlaylist :: IO [Song]
 fetchPlaylist = mpdReq $ playlistInfo Nothing

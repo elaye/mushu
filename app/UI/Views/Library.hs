@@ -9,6 +9,7 @@ module UI.Views.Library
 import ClassyPrelude hiding ((<>), on)
 import Data.Monoid ((<>))
 import Data.Map.Strict (elemAt)
+import qualified Data.Set as Set
 import qualified Data.Vector as V
 import Data.Vector ((!), empty)
 
@@ -170,7 +171,7 @@ updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 
     selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
     newAlbums = case selArtist of
       -- Just a -> maybe [] (\as -> (keys (as^.albums))) (lookup a (state^.filteredLibrary.artistAlbums))
-      Just a -> fromMaybe V.empty (lookup a (state^.filteredLibrary.artistsL))
+      Just a -> fromMaybe V.empty ((V.fromList . Set.toAscList) <$> (lookup a (state^.filteredLibrary.artistsL)))
       Nothing -> V.empty
 
 updateSongs :: AppState -> AppState
