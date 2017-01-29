@@ -2,9 +2,10 @@ module UI
 ( start
 ) where
 
-import ClassyPrelude
+import ClassyPrelude hiding (catch)
 import Library
 import UI.Types
+import Control.Exception.Safe (catch)
 
 import Control.Monad (void, forever)
 import Lens.Micro.Platform ((^.), (&), (.~), (%~))
@@ -34,7 +35,7 @@ import qualified Brick.Main as M
 import qualified Graphics.Vty as Vty
 
 import Network.MPD (Song)
-import MPD (togglePlayPause, fetchPlaylist)
+import MPD (togglePlayPause, fetchPlaylist, clearPlaylist)
 
 type NextState = EventM UIName (Next AppState)
 
@@ -47,10 +48,12 @@ drawUI state = if state^.helpActive
 
 appEvent :: AppState -> BrickEvent UIName e -> NextState
 appEvent state event = case state^.filterFocused of
+  -- True -> liftM catch (handleViewEvent state event) (\e -> (liftIO $ print "Exception") >> M.continue state)
   True -> handleViewEvent state event
   False -> case event of
     VtyEvent (Vty.EvKey (Vty.KChar '?') []) -> M.continue $ state & helpActive %~ not
     VtyEvent (Vty.EvKey (Vty.KChar 'p') []) -> void (liftIO togglePlayPause) >> M.continue state
+    VtyEvent (Vty.EvKey (Vty.KChar 'c') []) -> void (liftIO clearPlaylist) >> updatePlaylist state
     VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
     VtyEvent (Vty.EvKey (Vty.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
     ev -> handleViewEvent state ev

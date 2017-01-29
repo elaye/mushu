@@ -6,6 +6,7 @@ module MPD
 , fetchAllArtists
 , fetchArtistAlbums
 , fetchArtistAlbumSongs
+, clearPlaylist
 ) where
 
 import ClassyPrelude
@@ -27,6 +28,7 @@ import Network.MPD
   , search
   , find
   , anything
+  , clear
   , (=?), (<&>)
   )
 import qualified Network.MPD as M
@@ -74,3 +76,6 @@ fetchAllSongs = mpdReq $ search (Artist =? fromString "")
 
 fetchPlaylist :: IO [Song]
 fetchPlaylist = mpdReq $ playlistInfo Nothing
+
+clearPlaylist :: IO ()
+clearPlaylist = void $ withMPD clear
