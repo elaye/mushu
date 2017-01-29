@@ -6,6 +6,7 @@ module UI.Views.Library
 ) where
 
 import ClassyPrelude hiding ((<>), on)
+import Control.Exception.Safe (throw)
 import Data.Monoid ((<>))
 import Data.Map.Strict (elemAt)
 import qualified Data.Set as Set
@@ -43,7 +44,7 @@ import qualified UI.Widgets.Library as Library
 
 import Library (Library(..), ArtistName, AlbumName, albumsL, artistsL)
 
-import UI.Types (AppState(..), UIName(..), ActiveColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
+import UI.Types (AppState(..), UIName(..), ActiveColumn(..), AppException(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
 
 import Text.Fuzzy (simpleFilter)
 import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents)
@@ -130,6 +131,7 @@ event state (VtyEvent e) = case (state^.filterFocused) of
     -- VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> changeView state 1
     {-Vty.EvKey (Vty.KChar '-') [] -> delete-}
     -- ev -> listEvent ev state
+    (Vty.EvKey (Vty.KChar 'e') []) -> liftIO $ throw MPDException
     ev -> continue state
   where activeColumn = state^.libraryActiveColumn
 event state _ = continue state
@@ -178,7 +180,12 @@ updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSon
   where
     tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
     selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbums)
-    newSongsWidget = list (UIName "songs") newSongs 1
+    selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
+    newSongsWidget = list (UIName "songs") newSongsFiltered 1
+    -- Songs are filtered by the selected artist if we are in artist/album/songs mode
+    newSongsFiltered = case selArtist of
+      Just a -> filter (\s -> tag Artist "" s == a) newSongs
+      Nothing -> newSongs
     newSongs = case selAlbum of
       Just a -> fromMaybe V.empty (lookup a (state^.filteredLibrary.albumsL))
       Nothing -> V.empty
