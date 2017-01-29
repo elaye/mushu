@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module UI.Widgets.ArtistsList
 ( mkWidget
 , attrs

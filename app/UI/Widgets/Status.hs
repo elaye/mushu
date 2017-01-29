@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module UI.Widgets.Status
 ( attrs
 , attrName

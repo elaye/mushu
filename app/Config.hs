@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Config
 ( load
 , Config(..)

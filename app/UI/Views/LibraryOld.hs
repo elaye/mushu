@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 module UI.Views.Library
 ( draw
 , event
