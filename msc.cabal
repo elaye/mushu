@@ -25,6 +25,7 @@ executable msc
                       , UI.Widgets.Command, UI.Widgets.Help, UI.Widgets.Library, UI.Widgets.Playlist, UI.Widgets.Status
   build-depends:       base
                       ,classy-prelude
+                      ,safe-exceptions
                       ,containers
                       ,network
                       ,libmpd

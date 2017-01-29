@@ -4,6 +4,7 @@ module UI.Types
 ( AppState(..)
 , ViewType(..)
 , ActiveColumn(..)
+, AppException(..)
 , activeView
 , playlist
 , helpActive
@@ -20,6 +21,8 @@ module UI.Types
 ) where
 
 import ClassyPrelude
+
+import Control.Exception.Safe (Exception(..))
 
 import Brick.Widgets.Edit (Editor(..))
 import qualified Brick.Widgets.List as L
@@ -52,6 +55,10 @@ data AppState = AppState
   }
 
 data UIName = UIName Text deriving (Show, Eq, Ord)
+
+data AppException = MPDException | UnknownException deriving (Show, Typeable)
+
+instance Exception AppException
 
 instance IsString UIName where
   fromString s = UIName (pack s)
