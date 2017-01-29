@@ -3,7 +3,6 @@ module UI
 ) where
 
 import ClassyPrelude
-import Config
 import Library
 import UI.Types
 

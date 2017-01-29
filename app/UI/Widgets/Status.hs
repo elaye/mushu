@@ -14,7 +14,6 @@ import Brick.Util (on)
 
 import qualified Graphics.Vty as V
 
-import Config (Account(..))
 import UI.Types (UIName)
 
 attrName :: AttrName
@@ -23,5 +22,5 @@ attrName = "status"
 attrs :: [(AttrName, V.Attr)]
 attrs = [(attrName, V.green `on` V.black)]
 
-mkWidget :: Account -> Widget UIName
-mkWidget account = hCenter $ withAttr attrName $ padRight Max $ str $ "Status | Current account: " ++ (unpack $ name account)
+mkWidget :: Widget UIName
+mkWidget = hCenter $ withAttr attrName $ padRight Max $ str $ "Status"

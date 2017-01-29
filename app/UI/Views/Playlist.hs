@@ -28,11 +28,9 @@ import Brick.Types (BrickEvent(..))
 import Brick.Widgets.List (list)
 import Brick.Widgets.Core ((<+>))
 
--- import UI.Types (AppState, ViewType(..), playlist, activeView, config, VtyEvent(..), UIName(..))
 import UI.Types (AppState, ViewType(..), playlist, activeView, UIName(..))
 import qualified UI.Views.Main as Main
 import qualified UI.Widgets.Playlist as Playlist
-import Config (Config(..))
 
 import Network.MPD (withMPD, Song(..), Id(..), playId)
 

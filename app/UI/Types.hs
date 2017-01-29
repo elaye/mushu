@@ -25,8 +25,6 @@ import Brick.Widgets.Edit (Editor(..))
 import qualified Brick.Widgets.List as L
 import Library
 
-import Config (Config)
-
 import Data.Map.Strict (Map(..))
 
 import Lens.Micro.Platform (makeLenses)
