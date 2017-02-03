@@ -5,6 +5,7 @@ module UI.Types
 , ViewType(..)
 , ActiveColumn(..)
 , AppException(..)
+, MPDEvent(..)
 , activeView
 , playlist
 , helpActive
@@ -17,6 +18,7 @@ module UI.Types
 , librarySongs
 , libraryActiveColumn
 , filteredLibrary
+, status
 , UIName(..)
 ) where
 
@@ -51,12 +53,18 @@ data AppState = AppState
   , _libraryAlbums :: L.List UIName Text
   , _librarySongs :: L.List UIName Text
   , _libraryActiveColumn :: ActiveColumn
+  , _status :: M.Status
   , _helpActive :: Bool
   }
 
 data UIName = UIName Text deriving (Show, Eq, Ord)
 
 data AppException = MPDException | UnknownException deriving (Show, Typeable)
+
+data MPDEvent = MPDPlaylistEvent
+  | MPDDatabaseEvent
+  | MPDStatusEvent
+  | MPDUnknownEvent deriving (Show)
 
 instance Exception AppException
 

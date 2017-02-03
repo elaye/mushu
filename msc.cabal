@@ -28,6 +28,7 @@ executable msc
                       ,safe-exceptions
                       ,containers
                       ,network
+                      ,async
                       ,libmpd
                       ,text
                       ,fuzzy

@@ -6,7 +6,9 @@ module MPD
 , fetchAllArtists
 , fetchArtistAlbums
 , fetchArtistAlbumSongs
+, fetchStatus
 , clearPlaylist
+, mpdReq
 ) where
 
 import ClassyPrelude
@@ -19,6 +21,7 @@ import Network.MPD
   , Metadata(..)
   , Artist
   , Album
+  , def
   , withMPD
   , status
   , play
@@ -32,6 +35,8 @@ import Network.MPD
   , (=?), (<&>)
   )
 import qualified Network.MPD as M
+
+import Brick.BChan (BChan(..), writeBChan)
 
 currentSong :: IO ()
 currentSong = do
@@ -77,5 +82,13 @@ fetchAllSongs = mpdReq $ search (Artist =? fromString "")
 fetchPlaylist :: IO [Song]
 fetchPlaylist = mpdReq $ playlistInfo Nothing
 
+fetchStatus :: IO Status
+fetchStatus = do
+  st <- withMPD status
+  case st of
+    Left err -> return def
+    Right st -> return st
+
 clearPlaylist :: IO ()
 clearPlaylist = void $ withMPD clear
+

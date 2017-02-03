@@ -7,6 +7,8 @@ import Library
 import UI.Types
 import Control.Exception.Safe (catch)
 
+import Control.Concurrent.Async (async)
+
 import Control.Monad (void, forever)
 import Lens.Micro.Platform ((^.), (&), (.~), (%~))
 
@@ -30,12 +32,14 @@ import Brick.Widgets.Core (str)
 import Brick.Widgets.List (list)
 import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
+import Brick.BChan (BChan(..), newBChan, writeBChan)
 import qualified Brick.Main as M
 
 import qualified Graphics.Vty as Vty
+import Graphics.Vty.Config (defaultConfig)
 
-import Network.MPD (Song)
-import MPD (togglePlayPause, fetchPlaylist, clearPlaylist)
+import Network.MPD (Song, idle, Subsystem(..), Status)
+import MPD (togglePlayPause, fetchPlaylist, fetchStatus, clearPlaylist, mpdReq)
 
 type NextState = EventM UIName (Next AppState)
 
@@ -46,17 +50,20 @@ drawUI state = if state^.helpActive
     PlaylistView -> PlaylistView.draw state
     LibraryView -> LibraryView.draw state
 
-appEvent :: AppState -> BrickEvent UIName e -> NextState
-appEvent state event = case state^.filterFocused of
-  -- True -> liftM catch (handleViewEvent state event) (\e -> (liftIO $ print "Exception") >> M.continue state)
-  True -> handleViewEvent state event
-  False -> case event of
-    VtyEvent (Vty.EvKey (Vty.KChar '?') []) -> M.continue $ state & helpActive %~ not
-    VtyEvent (Vty.EvKey (Vty.KChar 'p') []) -> void (liftIO togglePlayPause) >> M.continue state
-    VtyEvent (Vty.EvKey (Vty.KChar 'c') []) -> void (liftIO clearPlaylist) >> updatePlaylist state
-    VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
-    VtyEvent (Vty.EvKey (Vty.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
-    ev -> handleViewEvent state ev
+appEvent :: AppState -> BrickEvent UIName MPDEvent -> NextState
+appEvent state event = case event of
+  AppEvent MPDPlaylistEvent -> updatePlaylist state
+  AppEvent MPDStatusEvent -> updateStatus state
+  vtyEvent -> case state^.filterFocused of
+    -- True -> liftM catch (handleViewEvent state event) (\e -> (liftIO $ print "Exception") >> M.continue state)
+    True -> handleViewEvent state vtyEvent
+    False -> case vtyEvent of
+      VtyEvent (Vty.EvKey (Vty.KChar '?') []) -> M.continue $ state & helpActive %~ not
+      VtyEvent (Vty.EvKey (Vty.KChar 'p') []) -> void (liftIO togglePlayPause) >> M.continue state
+      VtyEvent (Vty.EvKey (Vty.KChar 'c') []) -> void (liftIO clearPlaylist) >> updatePlaylist state
+      VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
+      VtyEvent (Vty.EvKey (Vty.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
+      ev -> handleViewEvent state ev
 
 handleViewEvent :: AppState -> BrickEvent UIName e -> NextState
 handleViewEvent state event = case state^.activeView of
@@ -69,8 +76,14 @@ updatePlaylist state = do
   let playlistWidget = list (UIName "playlist") (fromList songs) 1
   M.continue $ state & playlist .~ playlistWidget
 
-initialState :: [Song] -> Library -> AppState
-initialState playlist library = AppState
+updateStatus :: AppState -> NextState
+updateStatus state = do
+  st <- liftIO $ fetchStatus
+  -- let playlistWidget = list (UIName "playlist") (fromList songs) 1
+  M.continue $ state & status .~ st
+
+initialState :: [Song] -> Library -> Status -> AppState
+initialState playlist library status = AppState
   { _playlist = list (UIName "playlist") (fromList playlist) 1
   , _filterEditor = editorText (UIName "editor-fzf") (str . (concatMap unpack)) (Just 1) ""
   , _filterActive = False
@@ -82,6 +95,7 @@ initialState playlist library = AppState
   , _libraryAlbums = list (UIName "albums") firstArtistAlbums 1
   , _librarySongs = list (UIName "songs") V.empty 1
   , _libraryActiveColumn = ArtistsColumn
+  , _status = status
   , _helpActive = False
   }
   where
@@ -96,19 +110,35 @@ attributesMap = attrMap Vty.defAttr $ concat
   , LibraryView.attrs
   ]
 
-app :: M.App AppState e UIName
+app :: M.App AppState MPDEvent UIName
 app = M.App
   { M.appDraw = drawUI
   , M.appChooseCursor = M.showFirstCursor
   , M.appHandleEvent = appEvent
   , M.appStartEvent = return
   , M.appAttrMap = const attributesMap
-  -- , M.appLiftVtyEvent = VtyEvent
   }
+
+toEvent :: Subsystem -> MPDEvent
+toEvent UpdateS = MPDDatabaseEvent
+-- toEvent PlaylistS = MPDPlaylistEvent
+toEvent PlaylistS = MPDStatusEvent
+toEvent PlayerS = MPDStatusEvent
+toEvent OptionsS = MPDStatusEvent
+toEvent _ = MPDUnknownEvent
+
+mpdLoop :: BChan MPDEvent -> IO ()
+mpdLoop chan = forever $ do
+  subsChanges <- mpdReq $ idle [UpdateS, PlaylistS]
+  mapM_ (writeBChan chan) (map toEvent subsChanges)
 
 start :: IO ()
 start = do
   playlist <- fetchPlaylist
   library <- fetchLibrary
-  let initState = initialState playlist library
-  void $ M.defaultMain app initState
+  status <- fetchStatus
+  mpdEventChan <- newBChan 10
+  let initState = initialState playlist library status
+  async $ mpdLoop mpdEventChan
+  void $ M.customMain (Vty.mkVty defaultConfig)
+                    (Just mpdEventChan) app initState
