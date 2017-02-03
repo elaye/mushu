@@ -6,6 +6,9 @@ module UI.Widgets.Status
 
 import ClassyPrelude hiding (on)
 
+import UI.Types
+
+import Lens.Micro.Platform ((^.))
 import Brick.Types (Widget, Padding(..))
 import Brick.Widgets.Core (str, withAttr, padRight)
 import Brick.Widgets.Center (hCenter)
@@ -14,7 +17,8 @@ import Brick.Util (on)
 
 import qualified Graphics.Vty as V
 
-import UI.Types (UIName)
+
+import Network.MPD (Status(..))
 
 attrName :: AttrName
 attrName = "status"
@@ -22,5 +26,12 @@ attrName = "status"
 attrs :: [(AttrName, V.Attr)]
 attrs = [(attrName, V.green `on` V.black)]
 
-mkWidget :: Widget UIName
-mkWidget = hCenter $ withAttr attrName $ padRight Max $ str $ "Status"
+mkWidget :: AppState -> Widget UIName
+-- mkWidget state = hCenter $ withAttr attrName $ padRight Max $ str $ show currentSong
+mkWidget state = hCenter $ withAttr attrName $ padRight Max $ str $ show elapsed
+  where
+    st = state^.status
+    elapsed = case stTime st of
+      Nothing -> 0
+      Just (e, t) -> e
+    currentSong = stSongID st

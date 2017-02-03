@@ -11,7 +11,7 @@ import Brick.Widgets.Core (vBox)
 
 import Lens.Micro.Platform ((^.))
 
--- import qualified UI.Widgets.Status as Status
+import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Help as Help
 import qualified UI.Widgets.Command as Command
 
@@ -24,6 +24,6 @@ draw state widget = [ui]
         ui = vCenter $ vBox widgets
         widgets = [ Help.mkWidget
                   , hCenter widget
-                  -- , Status.mkWidget $ state^.activeAccount
+                  , Status.mkWidget state
                   , Command.mkWidget
                   ]
