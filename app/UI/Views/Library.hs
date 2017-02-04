@@ -67,7 +67,7 @@ draw state = Main.draw state $ widget
     columnWidget column els = renderList (listDrawElement (activeColumn == column)) True els
     activeColumn = state^.libraryActiveColumn
     widget = case (state^.filterActive) of
-      True -> fzf <=> columns
+      True -> fzf <=> hBorder <=> columns
       False -> columns
 
 listDrawElement :: Bool -> Bool -> Text -> Widget UIName
