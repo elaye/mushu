@@ -17,7 +17,8 @@ import Brick.Types (Widget(..), Padding(..))
 import Brick.Widgets.List (List, renderList, listSelectedAttr, listAttr, listElementsL)
 import Brick.AttrMap (AttrName)
 import Brick.Widgets.Center (hCenter)
-import Brick.Widgets.Core ((<+>), str, withAttr, padLeft, padRight, hLimit)
+import Brick.Widgets.Core ((<=>), (<+>), str, withAttr, padLeft, padRight, hLimit)
+import Brick.Widgets.Border (hBorder)
 import Brick.Util (fg, on)
 
 import qualified Graphics.Vty as V
@@ -30,13 +31,20 @@ import Network.MPD (Song(..), Metadata(..), toString, Value)
 import MPD (tag)
 
 mkWidget :: List UIName Song -> Widget UIName
-mkWidget playlist = renderList listDrawElement True playlist
+mkWidget playlist = header <=> hBorder <=> renderList listDrawElement True playlist
+  where
+    header = artist <+> track <+> title <+> album <+> time
+    artist = column (Just 25) (Pad 0) Max $ str "Artist"
+    track = column (Just 5) Max (Pad 0) $ str "Track"
+    title = column Nothing (Pad 2) Max $ str "Title"
+    album = column (Just 35) (Pad 2) Max $ str "Album"
+    time = column (Just 8) Max (Pad 1) $ str "Time"
 
 listDrawElement ::  Bool -> Song -> Widget UIName
 listDrawElement sel song = hCenter $ formatListElement False sel $ artist <+> track <+> title <+> album <+> time
   where
     artist = column (Just 25) (Pad 0) Max $ str. unpack $ tag Artist "<unknown>" song
-    track = column (Just 4) Max (Pad 0) $ str. unpack $ tag Track "?" song
+    track = column (Just 5) Max (Pad 0) $ str. unpack $ tag Track "?" song
     title = column Nothing (Pad 2) Max $ str . unpack $ tag Title "<no title>" song
     album = column (Just 35) (Pad 2) Max $ str . unpack $ tag Album "<no album>" song
     time = column (Just 8) Max (Pad 1) $ str . unpack $ secondsToTime $ sgLength song
