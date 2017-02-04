@@ -37,7 +37,11 @@ import qualified Graphics.Vty as V
 
 import qualified Network.MPD as M
 
-data ViewType = PlaylistView | LibraryView deriving Show
+data ViewType = PlaylistView | LibraryView
+
+instance Show ViewType where
+  show PlaylistView = "Playlist"
+  show LibraryView = "Library"
 
 data ActiveColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
 
