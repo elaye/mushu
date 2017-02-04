@@ -55,7 +55,7 @@ type NextState = EventM UIName (Next AppState)
 draw :: AppState -> [Widget UIName]
 draw state = Main.draw state $ widget
   where
-    fzf = str "Filter: " <+> renderEditor True (state^.filterEditor)
+    fzf = str "Filter: " <+> renderEditor True (state^.filterEditor) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
     columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
     column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
     title t = (padRight Max $ str t) <=> hBorder
@@ -123,7 +123,7 @@ event state (VtyEvent e) = case (state^.filterFocused) of
     (Vty.EvKey (Vty.KChar 'h') []) -> previousColumn state
     -- (Vty.EvKey Vty.KEnter []) -> play state
     (Vty.EvKey (Vty.KChar 'q') []) -> halt state
-    (Vty.EvKey (Vty.KChar '/') []) -> continue (state & filterActive .~ True
+    (Vty.EvKey (Vty.KChar 'f') []) -> continue (state & filterActive .~ True
                                                   & filterFocused .~ True)
     (Vty.EvKey Vty.KEsc []) -> case (state^.filterActive) of
       True -> continue $ resetFilter state
