@@ -55,7 +55,7 @@ type NextState = EventM UIName (Next AppState)
 draw :: AppState -> [Widget UIName]
 draw state = Main.draw state $ widget
   where
-    fzf = renderEditor True (state^.filterEditor)
+    fzf = str "Filter: " <+> renderEditor True (state^.filterEditor)
     columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
     column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
     title t = (padRight Max $ str t) <=> hBorder
