@@ -60,7 +60,7 @@ appEvent state event = case event of
     False -> case vtyEvent of
       VtyEvent (Vty.EvKey (Vty.KChar '?') []) -> M.continue $ state & helpActive %~ not
       VtyEvent (Vty.EvKey (Vty.KChar 'p') []) -> void (liftIO togglePlayPause) >> M.continue state
-      VtyEvent (Vty.EvKey (Vty.KChar 'c') []) -> void (liftIO clearPlaylist) >> updatePlaylist state
+      VtyEvent (Vty.EvKey (Vty.KChar 'c') []) -> void (liftIO clearPlaylist) >> M.continue state
       VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
       VtyEvent (Vty.EvKey (Vty.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
       ev -> handleViewEvent state ev
@@ -121,8 +121,7 @@ app = M.App
 
 toEvent :: Subsystem -> MPDEvent
 toEvent UpdateS = MPDDatabaseEvent
--- toEvent PlaylistS = MPDPlaylistEvent
-toEvent PlaylistS = MPDStatusEvent
+toEvent PlaylistS = MPDPlaylistEvent
 toEvent PlayerS = MPDStatusEvent
 toEvent OptionsS = MPDStatusEvent
 toEvent MixerS = MPDStatusEvent
