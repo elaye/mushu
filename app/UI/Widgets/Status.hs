@@ -10,7 +10,7 @@ import UI.Types
 
 import Lens.Micro.Platform ((^.))
 import Brick.Types (Widget, Padding(..))
-import Brick.Widgets.Core (str, withAttr, padRight)
+import Brick.Widgets.Core (str, withAttr, padRight, vBox, (<+>))
 import Brick.Widgets.Center (hCenter)
 import Brick.AttrMap (AttrName)
 import Brick.Util (on)
@@ -27,11 +27,15 @@ attrs :: [(AttrName, V.Attr)]
 attrs = [(attrName, V.green `on` V.black)]
 
 mkWidget :: AppState -> Widget UIName
--- mkWidget state = hCenter $ withAttr attrName $ padRight Max $ str $ show currentSong
-mkWidget state = hCenter $ withAttr attrName $ padRight Max $ str $ show elapsed
+mkWidget state = hCenter $ withAttr attrName $ widgets
   where
+    widgets = vBox $
+      [ currentSong <+> volume
+      , padRight Max $ str $ show elapsed
+      ]
     st = state^.status
     elapsed = case stTime st of
       Nothing -> 0
       Just (e, t) -> e
-    currentSong = stSongID st
+    currentSong = str $ show $ stSongID st
+    volume = str $ "Vol: " ++ (fromMaybe "-" $ (\v -> show v ++ "%") <$> (stVolume st))

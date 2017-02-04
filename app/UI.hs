@@ -125,12 +125,13 @@ toEvent UpdateS = MPDDatabaseEvent
 toEvent PlaylistS = MPDStatusEvent
 toEvent PlayerS = MPDStatusEvent
 toEvent OptionsS = MPDStatusEvent
+toEvent MixerS = MPDStatusEvent
 -- toEvent _ = MPDUnknownEvent
 toEvent _ = MPDStatusEvent
 
 mpdLoop :: BChan MPDEvent -> IO ()
 mpdLoop chan = forever $ do
-  subsChanges <- mpdReq $ idle [UpdateS, PlaylistS, OptionsS, PlayerS]
+  subsChanges <- mpdReq $ idle [UpdateS, PlaylistS, OptionsS, PlayerS, MixerS]
   mapM_ (writeBChan chan) (map toEvent subsChanges)
 
 start :: IO ()
