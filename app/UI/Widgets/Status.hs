@@ -10,7 +10,7 @@ import UI.Types
 
 import Lens.Micro.Platform ((^.))
 import Brick.Types (Widget, Padding(..))
-import Brick.Widgets.Core (str, withAttr, padRight, padLeft, hBox, hLimit, (<=>))
+import Brick.Widgets.Core (str, withAttr, padRight, padLeft, hBox, hLimit, (<=>), (<+>))
 import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.List (listElementsL)
 import Brick.AttrMap (AttrName)
@@ -32,19 +32,17 @@ attrs = [(attrName, V.green `on` V.black)]
 mkWidget :: AppState -> Widget UIName
 mkWidget state = hCenter $ withAttr attrName $ widgets
   where
-    -- widgets = vBox $
-    --   [ title <+> volume
-    --   , (hLimit 15 (padRight Max playbackState)) <+> artist <+> (hLimit 15 (padLeft Max (str " ")))
-    --   ]
     widgets = hBox $
       [ str " " <=> (hLimit 15 (padRight Max playbackState))
-      , title <=> artist
+      , title <=> artistAlbum
       , str " " <=> (hLimit 15 (padLeft Max volume))
       ]
     st = state^.status
     currentSong = (stSongPos st) >>= (\i -> (state^.playlist.listElementsL) !? i)
     title = hCenter $ mkTagWidget Title "<untitled>" currentSong
-    artist = hCenter $ mkTagWidget Artist "<unknown artist>" currentSong
+    artist = mkTagWidget Artist "<unknown artist>" currentSong
+    album = mkTagWidget Album "<unknown album>" currentSong
+    artistAlbum = hCenter $ artist <+> (str " - ") <+> album
     playbackState = mkStateWidget st
     volume = mkVolumeWidget st
 
