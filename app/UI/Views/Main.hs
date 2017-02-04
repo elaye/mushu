@@ -5,9 +5,10 @@ module UI.Views.Main
 import ClassyPrelude
 
 import Brick.Widgets.Center (vCenter, hCenter)
+import Brick.Widgets.Border (hBorder)
 
 import Brick.Types (Widget)
-import Brick.Widgets.Core (vBox)
+import Brick.Widgets.Core (vBox, str, (<=>))
 
 import Lens.Micro.Platform ((^.))
 
@@ -15,15 +16,19 @@ import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Help as Help
 import qualified UI.Widgets.Command as Command
 
-import UI.Types (AppState, UIName)
+import UI.Types
 
 draw :: AppState -> Widget UIName -> [Widget UIName]
 draw state widget = [ui]
     where
         {-total = str $ show $ Vec.length $ mails^.(L.listElementsL)-}
         ui = vCenter $ vBox widgets
-        widgets = [ Help.mkWidget
+        view = hBorder <=> (hCenter (str $ show (state^.activeView)))
+        widgets = [--Help.mkWidget
+                   Status.mkWidget state
+                  , hBorder
                   , hCenter widget
-                  , Status.mkWidget state
-                  , Command.mkWidget
+                  , view
+                  -- , Command.mkWidget
                   ]
+
