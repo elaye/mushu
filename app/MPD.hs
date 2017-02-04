@@ -8,6 +8,7 @@ module MPD
 , fetchArtistAlbumSongs
 , fetchStatus
 , clearPlaylist
+, tag
 , mpdReq
 ) where
 
@@ -32,6 +33,7 @@ import Network.MPD
   , find
   , anything
   , clear
+  , toString
   , (=?), (<&>)
   )
 import qualified Network.MPD as M
@@ -92,3 +94,7 @@ fetchStatus = do
 clearPlaylist :: IO ()
 clearPlaylist = void $ withMPD clear
 
+
+
+tag :: Metadata -> Text -> Song -> Text
+tag key def song = concat (pack <$> toString <$> findWithDefault [fromString (unpack def)] key (sgTags song))
