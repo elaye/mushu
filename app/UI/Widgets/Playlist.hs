@@ -14,7 +14,7 @@ import Data.Time.LocalTime (LocalTime(..))
 import Lens.Micro.Platform ((^.), _2, _3)
 
 import Brick.Types (Widget(..), Padding(..))
-import Brick.Widgets.List (List, renderList, listSelectedAttr, listAttr)
+import Brick.Widgets.List (List, renderList, listSelectedAttr, listAttr, listElementsL)
 import Brick.AttrMap (AttrName)
 import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.Core ((<+>), str, withAttr, padLeft, padRight, hLimit)
@@ -27,28 +27,26 @@ import UI.Utils (secondsToTime)
 
 -- import Data.Map.Lazy (findWithDefault)
 import Network.MPD (Song(..), Metadata(..), toString, Value)
+import MPD (tag)
 
 mkWidget :: List UIName Song -> Widget UIName
 mkWidget playlist = renderList listDrawElement True playlist
 
-listDrawElement :: Bool -> Song -> Widget UIName
+listDrawElement ::  Bool -> Song -> Widget UIName
 listDrawElement sel song = hCenter $ formatListElement False sel $ artist <+> track <+> title <+> album <+> time
   where
-    -- pad w = padLeft Max $ padRight Max $ w
-    -- frm = padRight (Pad 1) $ hLimit 15 $ str $ (formatFrom mail) ++ "          "
-    -- sbj = pad $ str $ formatSubject mail
-    -- dt = padRight (Pad 1) $ str $ formatDate mail
-    pad w = padLeft Max $ padRight Max $ w
-    -- artist = str $ findWithDefault "Kendrick Lamar" Artist
-    -- artist = str $ toString $ findWithDefault Artist (fromString "Kendrick Lamar") (sgTags song)
-    -- artist = str $ toString $ findWithDefault ["Kendrick Lamar"] Artist (sgTags song)
-    tag key def = concat (toString <$> findWithDefault [fromString def] key (sgTags song))
+    artist = column (Just 25) (Pad 0) Max $ str. unpack $ tag Artist "<unknown>" song
+    track = column (Just 4) Max (Pad 0) $ str. unpack $ tag Track "?" song
+    title = column Nothing (Pad 2) Max $ str . unpack $ tag Title "<no title>" song
+    album = column (Just 35) (Pad 2) Max $ str . unpack $ tag Album "<no album>" song
+    time = column (Just 8) Max (Pad 1) $ str . unpack $ secondsToTime $ sgLength song
 
-    artist = padRight (Pad 1) $ hLimit 15 $ str $ tag Artist "<no artist>"
-    track = padRight (Pad 2) $ str $ tag Track "<?>"
-    title = str $ tag Title "<no title>"
-    album = str $ tag Album "<no album>"
-    time = padLeft Max $ str $ unpack $ secondsToTime $ sgLength song
+-- Make a column considering a left padding, a right padding and an optional width
+column :: Maybe Int -> Padding -> Padding -> Widget UIName -> Widget UIName
+column maybeWidth left right widget = case maybeWidth of
+  Nothing -> w
+  Just wth -> hLimit wth $ w
+  where w = padLeft left $ padRight right $ widget
 
 formatListElement :: Bool -> Bool -> Widget UIName -> Widget UIName
 formatListElement playing sel widget = withAttr attr widget
