@@ -55,6 +55,6 @@ songsToLibraryFolder ::
   -> (Map ArtistName (Set AlbumName), Map AlbumName (Vector Song))
 songsToLibraryFolder (artists, albums) song = (newArtists, newAlbums)
   where
-    tag key song = concat (pack <$> toString <$> findWithDefault [fromString ""] key (sgTags song))
-    newArtists = insertWith union (tag Artist song) (Set.singleton (tag Album song)) artists
-    newAlbums = insertWith (++) (tag Album song) (V.singleton song) albums
+    tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
+    newArtists = insertWith union (tag Artist "<unknown>" song) (Set.singleton (tag Album "<untitled>" song)) artists
+    newAlbums = insertWith (++) (tag Album "<untitled>" song) (V.singleton song) albums
