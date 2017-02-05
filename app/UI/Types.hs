@@ -3,7 +3,7 @@
 module UI.Types
 ( AppState(..)
 , ViewType(..)
-, ActiveColumn(..)
+, LibraryColumn(..)
 , AppException(..)
 , MPDEvent(..)
 , activeView
@@ -43,7 +43,7 @@ instance Show ViewType where
   show PlaylistView = "Playlist"
   show LibraryView = "Library"
 
-data ActiveColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
+data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
 
 data AppState = AppState
   { _playlist :: L.List UIName M.Song
@@ -56,7 +56,7 @@ data AppState = AppState
   , _libraryArtists :: L.List UIName Text
   , _libraryAlbums :: L.List UIName Text
   , _librarySongs :: L.List UIName Text
-  , _libraryActiveColumn :: ActiveColumn
+  , _libraryActiveColumn :: LibraryColumn
   , _status :: M.Status
   , _helpActive :: Bool
   }

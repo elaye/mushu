@@ -21,8 +21,9 @@ import Brick.Widgets.List
   ( List
   , list
   , renderList
-  , listSelectedAttr
   , listAttr
+  , listSelectedAttr
+  , listSelectedFocusedAttr
   , listMoveUp
   , listMoveDown
   , listSelectedL
@@ -44,7 +45,7 @@ import qualified UI.Widgets.Library as Library
 
 import Library (Library(..), ArtistName, AlbumName, albumsL, artistsL)
 
-import UI.Types (AppState(..), UIName(..), ActiveColumn(..), AppException(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
+import UI.Types (AppState(..), UIName(..), LibraryColumn(..), AppException(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
 
 import Text.Fuzzy (simpleFilter)
 import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents)
@@ -64,41 +65,75 @@ draw state = Main.draw state $ widget
     albumsWidget = columnWidget AlbumsColumn (state^.libraryAlbums)
     songsWidget = columnWidget SongsColumn (state^.librarySongs)
 
-    columnWidget column els = renderList (listDrawElement (activeColumn == column)) True els
+    -- columnWidget column els = renderList (listDrawElement column activeColumn) True els
+    -- columnWidget column els = renderList (listDrawElement column activeColumn) (column == activeColumn) els
+    columnWidget column els = renderList (listDrawElement column activeColumn) False els
     activeColumn = state^.libraryActiveColumn
     widget = case (state^.filterActive) of
       True -> fzf <=> hBorder <=> columns
       False -> columns
 
-listDrawElement :: Bool -> Bool -> Text -> Widget UIName
-listDrawElement colActive sel el = hCenter $ formatListElement colActive sel $ pad $ str (unpack el)
+listDrawElement :: LibraryColumn -> LibraryColumn -> Bool -> Text -> Widget UIName
+listDrawElement column activeColumn sel el = hCenter $ formatListElement column activeColumn sel $ pad $ str (unpack el)
   where
     pad w = padLeft Max $ padRight Max $ w
 
-formatListElement :: Bool -> Bool -> Widget UIName -> Widget UIName
-formatListElement colActive sel widget = withAttr attr widget
-  where attr = case colActive of
-                True -> case sel of
-                  True -> selActiveColAttrName
-                  False -> activeColAttrName
-                False -> case sel of
-                  True -> selAttrName
-                  False -> listAttr
+formatListElement :: LibraryColumn -> LibraryColumn -> Bool -> Widget UIName -> Widget UIName
+formatListElement column activeColumn sel widget = withAttr attr widget
+  -- where attr = case column == activeColumn of
+  --               True -> case sel of
+  --                 True -> selActiveColAttrName
+  --                 False -> activeColAttrName
+  --               False -> case sel of
+  --                 True -> case columnIsBefore column activeColumn of
+  --                   True -> listAttr
+  --                   False -> listAttr
+  --                 False -> listAttr
+  where
+    attr = case column == activeColumn of
+          -- True -> listAttrName
+          True -> case sel of
+            True -> selActiveColAttrName
+            False -> activeColAttrName
+          -- False -> listAttrName
+          False -> case columnIsBefore column activeColumn of
+            True -> case sel of
+              True -> listSelAttrName
+              False -> listAttrName
+            False -> listAttrName
 
-selAttrName :: AttrName
-selAttrName = listSelectedAttr <> "custom"
+
+-- TODO: find a better way to do this
+-- column != activeColumn must be true before calling this function
+columnIsBefore :: LibraryColumn -> LibraryColumn -> Bool
+-- columnIsBefore _ _ = False
+columnIsBefore column activeColumn = case activeColumn of
+  ArtistsColumn -> False
+  SongsColumn -> True
+  AlbumsColumn -> case column of
+    ArtistsColumn -> True
+    SongsColumn -> False
+
+listAttrName :: AttrName
+listAttrName = listAttr <> "custom"
+
+listSelAttrName :: AttrName
+listSelAttrName = listSelectedAttr <> "custom-selected"
 
 activeColAttrName :: AttrName
-activeColAttrName = listAttr <> "active-column"
+activeColAttrName = listAttrName <> "active-column"
 
 selActiveColAttrName :: AttrName
-selActiveColAttrName = listSelectedAttr <> "selected-active-column"
+selActiveColAttrName = listSelAttrName <> "selected-active-column"
 
 attrs :: [(AttrName, Vty.Attr)]
-attrs = [ (selAttrName, Vty.brightBlack `on` Vty.black)
-        , (selActiveColAttrName, Vty.green `on` Vty.black)
-        , (listAttr, fg Vty.brightBlack)
+-- attrs = [ (listAttrName, fg Vty.white)
+attrs = [ (listAttrName, Vty.white `on` Vty.brightBlack)
+-- attrs = [ (listAttrName, Vty.defAttr)
+        , (listSelAttrName, Vty.black `on` Vty.white)
         , (activeColAttrName, fg Vty.white)
+        , (selActiveColAttrName, Vty.black `on` Vty.green)
+        , (listSelectedFocusedAttr, fg Vty.red)
         ]
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
