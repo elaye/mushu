@@ -5,13 +5,11 @@ module UI.Types
 , ViewType(..)
 , LibraryColumn(..)
 , MPDEvent(..)
+, UIName(..)
 , activeView
 , playlist
 , helpActive
 , filterStateL
--- , filterActive
--- , filterFocused
--- , filterEditor
 , library
 , libraryArtists
 , libraryAlbums
@@ -19,12 +17,10 @@ module UI.Types
 , libraryActiveColumn
 , filteredLibrary
 , status
-, UIName(..)
 ) where
 
 import ClassyPrelude
 
--- import Brick.Widgets.Edit (Editor(..))
 import qualified Brick.Widgets.List as L
 import Library
 
@@ -45,12 +41,8 @@ instance Show ViewType where
 
 data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
 
-
 data AppState n = AppState
   { _playlist :: L.List n M.Song
-  -- , _filterEditor :: Editor Text UIName
-  -- , _filterActive :: Bool
-  -- , _filterFocused :: Bool
   , _filterStateL :: FilterState n
   , _activeView :: ViewType
   , _library :: Library
@@ -69,7 +61,6 @@ data MPDEvent = MPDPlaylistEvent
   | MPDDatabaseEvent
   | MPDStatusEvent
   | MPDUnknownEvent deriving (Show)
-
 
 instance IsString UIName where
   fromString s = UIName (pack s)

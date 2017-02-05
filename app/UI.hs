@@ -32,7 +32,6 @@ import UI.Widgets.Filter (isFocusedL)
 import Brick.Types (Widget, EventM, Next(..), BrickEvent(..))
 import Brick.Widgets.Core (str)
 import Brick.Widgets.List (list)
--- import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
 import Brick.BChan (BChan(..), newBChan, writeBChan)
 import Brick.Util (clamp)
@@ -101,9 +100,6 @@ changeVolume f state = case volume of
 initialState :: [Song] -> Library -> Status -> AppState UIName
 initialState playlist library status = AppState
   { _playlist = list (UIName "playlist") (fromList playlist) 1
-  -- , _filterEditor = editorText (UIName "editor-fzf") (str . (concatMap unpack)) (Just 1) ""
-  -- , _filterActive = False
-  -- , _filterFocused = False
   , _filterStateL = Filter.mkState (UIName "filter")
   , _activeView = LibraryView
   , _library = library
