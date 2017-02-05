@@ -8,11 +8,14 @@ module MPD
 , fetchArtistAlbumSongs
 , fetchStatus
 , clearPlaylist
+, addToPlaylist
 , tag
 , mpdReq
 ) where
 
 import ClassyPrelude
+
+import Control.Exception.Safe (throw)
 
 import Network.MPD
   ( MPD
@@ -33,11 +36,13 @@ import Network.MPD
   , find
   , anything
   , clear
+  , findAdd
   , toString
   , (=?), (<&>)
   )
 import qualified Network.MPD as M
 
+import Types
 import Brick.BChan (BChan(..), writeBChan)
 
 currentSong :: IO ()
@@ -94,7 +99,22 @@ fetchStatus = do
 clearPlaylist :: IO ()
 clearPlaylist = void $ withMPD clear
 
-
+addToPlaylist :: (Maybe Text, Maybe Text, Maybe Text) -> IO ()
+addToPlaylist (Nothing, _, _) = print "unknown artist for adding to playlist"
+addToPlaylist (Just artist, maybeAlbum, maybeTitle) = do
+  let
+    toValue = fromString . unpack
+    queryArtist = Artist =? (toValue artist)
+    queryArtistAlbum = case maybeAlbum of
+      Just album -> queryArtist <&> Album =? (toValue album)
+      Nothing -> queryArtist
+    queryArtistAlbumTitle = case maybeTitle of
+      Just title -> queryArtistAlbum <&> Title =? (toValue title)
+      Nothing -> queryArtistAlbum
+  res <- withMPD $ findAdd queryArtistAlbumTitle
+  case res of
+    Left err -> throw MPDException
+    Right _ -> return ()
 
 tag :: Metadata -> Text -> Song -> Text
 tag key def song = concat (pack <$> toString <$> findWithDefault [fromString (unpack def)] key (sgTags song))

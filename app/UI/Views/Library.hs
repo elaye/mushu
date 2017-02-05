@@ -11,10 +11,11 @@ import Data.Monoid ((<>))
 import Data.Map.Strict (elemAt)
 import qualified Data.Set as Set
 import qualified Data.Vector as V
-import Data.Vector ((!), empty)
+import Data.Vector ((!), (!?), empty)
 
 import qualified UI.Views.Main as Main
 import Network.MPD (Song(..), Metadata(..), toString)
+import MPD (tag, addToPlaylist)
 
 import Brick.Types (Widget(..), Padding(..), BrickEvent(..), EventM, Next)
 import Brick.Widgets.List
@@ -47,6 +48,7 @@ import Library (Library(..), ArtistName, AlbumName, albumsL, artistsL)
 
 import Types (AppException(..))
 import UI.Types (AppState(..), UIName(..), LibraryColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
+import UI.Utils (listGetSelected)
 
 import Text.Fuzzy (simpleFilter)
 import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents)
@@ -157,6 +159,7 @@ event state (VtyEvent e) = case (state^.filterFocused) of
       SongsColumn -> previousSong state
     (Vty.EvKey (Vty.KChar 'l') []) -> nextColumn state
     (Vty.EvKey (Vty.KChar 'h') []) -> previousColumn state
+    (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> continue state
     -- (Vty.EvKey Vty.KEnter []) -> play state
     (Vty.EvKey (Vty.KChar 'q') []) -> halt state
     (Vty.EvKey (Vty.KChar 'f') []) -> continue (state & filterActive .~ True
@@ -214,7 +217,7 @@ updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 
 updateSongs :: AppState -> AppState
 updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSongsWidget)
   where
-    tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
+    -- tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
     selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbums)
     selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
     newSongsWidget = list (UIName "songs") newSongsFiltered 1
@@ -227,10 +230,10 @@ updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSon
       Nothing -> V.empty
 
 nextAlbum :: AppState -> NextState
-nextAlbum state = continue $ state & libraryAlbums %~ listMoveDown
+nextAlbum state = continue $ updateSongs $ state & libraryAlbums %~ listMoveDown
 
 previousAlbum :: AppState -> NextState
-previousAlbum state = continue $ state & libraryAlbums %~ listMoveUp
+previousAlbum state = continue $ updateSongs $ state & libraryAlbums %~ listMoveUp
 
 nextSong :: AppState -> NextState
 nextSong state = continue $ state & librarySongs %~ listMoveDown
@@ -253,6 +256,22 @@ previousColumn state = continue $ state & libraryActiveColumn .~ prevCol
                 ArtistsColumn -> ArtistsColumn
                 AlbumsColumn -> ArtistsColumn
                 SongsColumn -> AlbumsColumn
+
+getSelected :: AppState -> (Maybe Text, Maybe Text, Maybe Text)
+getSelected state = (artist, album, title)
+  where
+    activeColumn = state^.libraryActiveColumn
+    artist = listGetSelected $ state^.libraryArtists
+    album = case activeColumn == AlbumsColumn of
+      True -> listGetSelected $ state^.libraryAlbums
+      False -> Nothing
+    title = case activeColumn == SongsColumn of
+      True -> listGetSelected $ state^.librarySongs
+      False -> Nothing
+
+
+addSelectedToPlaylist :: AppState -> IO ()
+addSelectedToPlaylist state = addToPlaylist $ getSelected state
 
 -- libraryEvent :: Vty.Event -> AppState -> NextState
 -- libraryEvent event state = continue =<< (\m -> state & filteredLibrary .~ m) <$> handleLibraryEvent event (state^.library)

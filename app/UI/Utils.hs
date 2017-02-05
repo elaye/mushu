@@ -1,11 +1,15 @@
 module UI.Utils
 ( attrs
 , secondsToTime
+, listGetSelected
 ) where
 
 import ClassyPrelude hiding (on)
 
-import Brick.Widgets.List (listAttr, listSelectedAttr)
+import Lens.Micro.Platform ((^.))
+import Data.Vector ((!?))
+
+import Brick.Widgets.List (List, listAttr, listSelectedAttr, listSelectedL, listElementsL)
 import Brick.Util (fg, on)
 import Brick.AttrMap (AttrName)
 
@@ -37,3 +41,6 @@ pad :: Text -> Text -> Text
 pad txt p = case (length txt == 1) of
   True -> p ++ txt
   False -> txt
+
+listGetSelected :: List n e -> Maybe e
+listGetSelected list = (list^.listSelectedL) >>= (\i -> (list^.listElementsL) !? i)
