@@ -174,7 +174,6 @@ event state (VtyEvent e) = case (state^.filterFocused) of
     -- VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> changeView state 1
     {-Vty.EvKey (Vty.KChar '-') [] -> delete-}
     -- ev -> listEvent ev state
-    (Vty.EvKey (Vty.KChar 'e') []) -> liftIO $ throw MPDException
     ev -> continue state
   where activeColumn = state^.libraryActiveColumn
 event state _ = continue state
