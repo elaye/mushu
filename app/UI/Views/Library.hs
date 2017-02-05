@@ -134,7 +134,7 @@ filterAttrName = editAttr
 
 attrs :: [(AttrName, Vty.Attr)]
 -- attrs = [ (listAttrName, fg Vty.white)
-attrs = [ (listAttrName, Vty.white `on` Vty.brightBlack)
+attrs = [ (listAttrName, Vty.white `on` Vty.black)
 -- attrs = [ (listAttrName, Vty.defAttr)
         , (listSelAttrName, Vty.black `on` Vty.yellow)
         , (activeColAttrName, fg Vty.white)
