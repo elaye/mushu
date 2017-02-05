@@ -9,6 +9,7 @@ module MPD
 , fetchStatus
 , clearPlaylist
 , addToPlaylist
+, setVolume
 , tag
 , mpdReq
 ) where
@@ -115,6 +116,9 @@ addToPlaylist (Just artist, maybeAlbum, maybeTitle) = do
   case res of
     Left err -> throw MPDException
     Right _ -> return ()
+
+setVolume :: Int -> IO ()
+setVolume volume = void $ withMPD $ M.setVolume volume
 
 tag :: Metadata -> Text -> Song -> Text
 tag key def song = concat (pack <$> toString <$> findWithDefault [fromString (unpack def)] key (sgTags song))

@@ -33,13 +33,14 @@ import Brick.Widgets.List (list)
 import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
 import Brick.BChan (BChan(..), newBChan, writeBChan)
+import Brick.Util (clamp)
 import qualified Brick.Main as M
 
 import qualified Graphics.Vty as Vty
 import Graphics.Vty.Config (defaultConfig)
 
-import Network.MPD (Song, idle, Subsystem(..), Status)
-import MPD (togglePlayPause, fetchPlaylist, fetchStatus, clearPlaylist, mpdReq)
+import Network.MPD (Song, idle, Subsystem(..), Status(..))
+import MPD (togglePlayPause, fetchPlaylist, fetchStatus, clearPlaylist, mpdReq, setVolume)
 
 type NextState = EventM UIName (Next AppState)
 
@@ -63,6 +64,8 @@ appEvent state event = case event of
       VtyEvent (Vty.EvKey (Vty.KChar 'c') []) -> void (liftIO clearPlaylist) >> M.continue state
       VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> M.continue $ state & activeView .~ PlaylistView
       VtyEvent (Vty.EvKey (Vty.KChar '2') []) -> M.continue $ state & activeView .~ LibraryView
+      VtyEvent (Vty.EvKey (Vty.KChar '-') []) -> void (liftIO (decreaseVolume state)) >> M.continue state
+      VtyEvent (Vty.EvKey (Vty.KChar '+') []) -> void (liftIO (increaseVolume state)) >> M.continue state
       ev -> handleViewEvent state ev
 
 handleViewEvent :: AppState -> BrickEvent UIName e -> NextState
@@ -79,8 +82,19 @@ updatePlaylist state = do
 updateStatus :: AppState -> NextState
 updateStatus state = do
   st <- liftIO $ fetchStatus
-  -- let playlistWidget = list (UIName "playlist") (fromList songs) 1
   M.continue $ state & status .~ st
+
+increaseVolume :: AppState -> IO ()
+increaseVolume state = changeVolume (+3) state
+
+decreaseVolume :: AppState -> IO ()
+decreaseVolume state = changeVolume (\i -> i-3) state
+
+changeVolume :: (Int -> Int) -> AppState -> IO ()
+changeVolume f state = case volume of
+  Nothing -> return ()
+  Just v -> setVolume $ clamp (f v) 0 100
+  where volume = (stVolume (state^.status))
 
 initialState :: [Song] -> Library -> Status -> AppState
 initialState playlist library status = AppState
@@ -125,8 +139,7 @@ toEvent PlaylistS = MPDPlaylistEvent
 toEvent PlayerS = MPDStatusEvent
 toEvent OptionsS = MPDStatusEvent
 toEvent MixerS = MPDStatusEvent
--- toEvent _ = MPDUnknownEvent
-toEvent _ = MPDStatusEvent
+toEvent _ = MPDUnknownEvent
 
 mpdLoop :: BChan MPDEvent -> IO ()
 mpdLoop chan = forever $ do
