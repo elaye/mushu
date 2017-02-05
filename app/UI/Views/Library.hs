@@ -45,7 +45,8 @@ import qualified UI.Widgets.Library as Library
 
 import Library (Library(..), ArtistName, AlbumName, albumsL, artistsL)
 
-import UI.Types (AppState(..), UIName(..), LibraryColumn(..), AppException(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
+import Types (AppException(..))
+import UI.Types (AppState(..), UIName(..), LibraryColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
 
 import Text.Fuzzy (simpleFilter)
 import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents)
