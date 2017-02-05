@@ -18,7 +18,7 @@ import qualified UI.Widgets.Command as Command
 
 import UI.Types
 
-draw :: AppState -> Widget UIName -> [Widget UIName]
+draw :: AppState n -> Widget n -> [Widget n]
 draw state widget = [ui]
     where
         {-total = str $ show $ Vec.length $ mails^.(L.listElementsL)-}

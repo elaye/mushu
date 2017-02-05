@@ -55,7 +55,7 @@ attrs = [ (attrName, fg V.white)
         , (stoppedAttrName, fg V.red)
         ]
 
-mkWidget :: AppState -> Widget UIName
+mkWidget :: AppState n -> Widget n
 mkWidget state = hCenter $ withAttr attrName $ widgets
   where
     widgets = hBox $
@@ -72,7 +72,7 @@ mkWidget state = hCenter $ withAttr attrName $ widgets
     playbackState = mkStateWidget st
     volume = mkVolumeWidget st
 
-mkStateWidget :: Status -> Widget UIName
+mkStateWidget :: Status -> Widget n
 mkStateWidget status = withAttr attr $ str $ "[" ++ state ++ "]"
   where
     st = stState status
@@ -83,9 +83,9 @@ mkStateWidget status = withAttr attr $ str $ "[" ++ state ++ "]"
       Paused -> pausedAttrName
       Stopped -> stoppedAttrName
 
-mkVolumeWidget :: Status -> Widget UIName
+mkVolumeWidget :: Status -> Widget n
 mkVolumeWidget status = str $ "Vol: " ++ (fromMaybe "-" $ maybeVolume)
   where maybeVolume = (\v -> show v ++ "%") <$> (stVolume status)
 
-mkTagWidget :: Metadata -> Text -> Maybe Song -> Widget UIName
+mkTagWidget :: Metadata -> Text -> Maybe Song -> Widget n
 mkTagWidget metaTag def song = str . unpack $ fromMaybe " " $ (tag metaTag def) <$> song

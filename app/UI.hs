@@ -26,11 +26,13 @@ import qualified UI.Views.Library as LibraryView
 import qualified UI.Views.Help as HelpView
 import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Playlist as Playlist
+import qualified UI.Widgets.Filter as Filter
+import UI.Widgets.Filter (isFocusedL)
 
 import Brick.Types (Widget, EventM, Next(..), BrickEvent(..))
 import Brick.Widgets.Core (str)
 import Brick.Widgets.List (list)
-import Brick.Widgets.Edit (editorText)
+-- import Brick.Widgets.Edit (editorText)
 import Brick.AttrMap (AttrMap, attrMap)
 import Brick.BChan (BChan(..), newBChan, writeBChan)
 import Brick.Util (clamp)
@@ -42,20 +44,20 @@ import Graphics.Vty.Config (defaultConfig)
 import Network.MPD (Song, idle, Subsystem(..), Status(..))
 import MPD (togglePlayPause, fetchPlaylist, fetchStatus, clearPlaylist, mpdReq, setVolume)
 
-type NextState = EventM UIName (Next AppState)
+type NextState n = EventM n (Next (AppState n))
 
-drawUI :: AppState -> [Widget UIName]
+drawUI :: (Show n, Ord n) => AppState n -> [Widget n]
 drawUI state = if state^.helpActive
   then HelpView.draw
   else case state^.activeView of
     PlaylistView -> PlaylistView.draw state
     LibraryView -> LibraryView.draw state
 
-appEvent :: AppState -> BrickEvent UIName MPDEvent -> NextState
+appEvent :: AppState UIName -> BrickEvent UIName MPDEvent -> NextState UIName
 appEvent state event = case event of
   AppEvent MPDPlaylistEvent -> updatePlaylist state
   AppEvent MPDStatusEvent -> updateStatus state
-  vtyEvent -> case state^.filterFocused of
+  vtyEvent -> case (state^.filterStateL.isFocusedL) of
     -- True -> liftM catch (handleViewEvent state event) (\e -> (liftIO $ print "Exception") >> M.continue state)
     True -> handleViewEvent state vtyEvent
     False -> case vtyEvent of
@@ -68,40 +70,41 @@ appEvent state event = case event of
       VtyEvent (Vty.EvKey (Vty.KChar '+') []) -> void (liftIO (increaseVolume state)) >> M.continue state
       ev -> handleViewEvent state ev
 
-handleViewEvent :: AppState -> BrickEvent UIName e -> NextState
+handleViewEvent :: AppState UIName -> BrickEvent UIName e -> NextState UIName
 handleViewEvent state event = case state^.activeView of
   PlaylistView -> PlaylistView.event state event
   LibraryView -> LibraryView.event state event
 
-updatePlaylist :: AppState -> NextState
+updatePlaylist :: AppState UIName -> NextState UIName
 updatePlaylist state = do
   songs <- liftIO $ fetchPlaylist
   let playlistWidget = list (UIName "playlist") (fromList songs) 1
   M.continue $ state & playlist .~ playlistWidget
 
-updateStatus :: AppState -> NextState
+updateStatus :: AppState n -> NextState n
 updateStatus state = do
   st <- liftIO $ fetchStatus
   M.continue $ state & status .~ st
 
-increaseVolume :: AppState -> IO ()
+increaseVolume :: AppState n -> IO ()
 increaseVolume state = changeVolume (+3) state
 
-decreaseVolume :: AppState -> IO ()
+decreaseVolume :: AppState n -> IO ()
 decreaseVolume state = changeVolume (\i -> i-3) state
 
-changeVolume :: (Int -> Int) -> AppState -> IO ()
+changeVolume :: (Int -> Int) -> AppState n -> IO ()
 changeVolume f state = case volume of
   Nothing -> return ()
   Just v -> setVolume $ clamp (f v) 0 100
   where volume = (stVolume (state^.status))
 
-initialState :: [Song] -> Library -> Status -> AppState
+initialState :: [Song] -> Library -> Status -> AppState UIName
 initialState playlist library status = AppState
   { _playlist = list (UIName "playlist") (fromList playlist) 1
-  , _filterEditor = editorText (UIName "editor-fzf") (str . (concatMap unpack)) (Just 1) ""
-  , _filterActive = False
-  , _filterFocused = False
+  -- , _filterEditor = editorText (UIName "editor-fzf") (str . (concatMap unpack)) (Just 1) ""
+  -- , _filterActive = False
+  -- , _filterFocused = False
+  , _filterStateL = Filter.mkState (UIName "filter")
   , _activeView = LibraryView
   , _library = library
   , _filteredLibrary = library
@@ -122,9 +125,10 @@ attributesMap = attrMap Vty.defAttr $ concat
   , Playlist.attrs
   , Status.attrs
   , LibraryView.attrs
+  , Filter.attrs
   ]
 
-app :: M.App AppState MPDEvent UIName
+app :: M.App (AppState UIName) MPDEvent UIName
 app = M.App
   { M.appDraw = drawUI
   , M.appChooseCursor = M.showFirstCursor

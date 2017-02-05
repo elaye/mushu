@@ -8,7 +8,6 @@ import Brick.Types (Widget, Padding(..))
 import Brick.Widgets.Core (str, withAttr, padLeft)
 
 import qualified UI.Widgets.Status as Status
-import UI.Types (UIName)
 
-mkWidget :: Widget UIName
+mkWidget :: Widget n
 mkWidget = withAttr Status.attrName $ padLeft Max $ str "?: help"

@@ -43,23 +43,27 @@ import qualified Graphics.Vty as Vty
 
 import qualified UI.Widgets.Library as Library
 -- import UI.Widgets.Library (albums, artistAlbums)
+import qualified UI.Widgets.Filter as Filter
+import UI.Widgets.Filter (isActiveL, isFocusedL)
 
 import Library (Library(..), ArtistName, AlbumName, albumsL, artistsL)
 
 import Types (AppException(..))
-import UI.Types (AppState(..), UIName(..), LibraryColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
+-- import UI.Types (AppState(..), UIName(..), LibraryColumn(..), library, libraryActiveColumn, filteredLibrary, libraryArtists, libraryAlbums, librarySongs, filterEditor, filterActive, filterFocused)
+import UI.Types
 import UI.Utils (listGetSelected)
 
 import Text.Fuzzy (simpleFilter)
-import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents, editAttr)
-import Data.Text.Zipper (textZipper)
+-- import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents, editAttr)
+-- import Data.Text.Zipper (textZipper)
 
-type NextState = EventM UIName (Next AppState)
+type NextState n = EventM n (Next (AppState n))
 
-draw :: AppState -> [Widget UIName]
+draw :: (Show n, Ord n) => AppState n -> [Widget n]
 draw state = Main.draw state $ widget
   where
-    fzf = str "Filter: " <+> (withAttr filterAttrName (renderEditor (state^.filterFocused) (state^.filterEditor))) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
+    -- fzf = str "Filter: " <+> (withAttr filterAttrName (renderEditor (state^.filterFocused) (state^.filterEditor))) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
+    fzf = Filter.mkWidget $ state^.filterStateL
     columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
     column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
     title t = (padRight Max $ str t) <=> hBorder
@@ -72,16 +76,17 @@ draw state = Main.draw state $ widget
     -- columnWidget column els = renderList (listDrawElement column activeColumn) (column == activeColumn) els
     columnWidget column els = renderList (listDrawElement column activeColumn) False els
     activeColumn = state^.libraryActiveColumn
-    widget = case (state^.filterActive) of
+    -- widget = case (state^.filterActive) of
+    widget = case (state^.filterStateL.isActiveL) of
       True -> fzf <=> hBorder <=> columns
       False -> columns
 
-listDrawElement :: LibraryColumn -> LibraryColumn -> Bool -> Text -> Widget UIName
+listDrawElement :: LibraryColumn -> LibraryColumn -> Bool -> Text -> Widget n
 listDrawElement column activeColumn sel el = hCenter $ formatListElement column activeColumn sel $ pad $ str (unpack el)
   where
     pad w = padLeft Max $ padRight Max $ w
 
-formatListElement :: LibraryColumn -> LibraryColumn -> Bool -> Widget UIName -> Widget UIName
+formatListElement :: LibraryColumn -> LibraryColumn -> Bool -> Widget n -> Widget n
 formatListElement column activeColumn sel widget = withAttr attr widget
   -- where attr = case column == activeColumn of
   --               True -> case sel of
@@ -129,8 +134,8 @@ activeColAttrName = listAttrName <> "active-column"
 selActiveColAttrName :: AttrName
 selActiveColAttrName = listSelAttrName <> "selected-active-column"
 
-filterAttrName :: AttrName
-filterAttrName = editAttr
+-- filterAttrName :: AttrName
+-- filterAttrName = editAttr
 
 attrs :: [(AttrName, Vty.Attr)]
 -- attrs = [ (listAttrName, fg Vty.white)
@@ -140,18 +145,26 @@ attrs = [ (listAttrName, Vty.white `on` Vty.black)
         , (activeColAttrName, fg Vty.white)
         , (selActiveColAttrName, Vty.black `on` Vty.green)
         , (listSelectedFocusedAttr, fg Vty.red)
-        , (filterAttrName, fg Vty.yellow)
+        -- , (filterAttrName, fg Vty.yellow)
         ]
 
-event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
-event state (VtyEvent e) = case (state^.filterFocused) of
+-- event :: (Show n, Ord n) => AppState n -> BrickEvent n e -> EventM n (Next (AppState n))
+event :: AppState UIName -> BrickEvent UIName e -> EventM UIName (Next (AppState UIName))
+-- event state (VtyEvent e) = case (state^.filterFocused) of
+event state (VtyEvent e) = case (state^.filterStateL.isFocusedL) of
   True -> case e of
     (Vty.EvKey Vty.KEsc []) -> continue $ resetFilter state
-    (Vty.EvKey Vty.KEnter []) -> continue (state & filterFocused .~ False)
+    (Vty.EvKey Vty.KEnter []) -> continue (state & filterStateL %~ Filter.blur)
+    -- ev -> do
+    --   newFilterEditor <- handleEditorEvent ev (state^.filterEditor)
+    --   let newEditorState = state & filterEditor .~ newFilterEditor
+    --   continue $ newEditorState & libraryArtists .~ (list (UIName "filtered-artists") (V.fromList (getFilteredLibrary newEditorState)) 1)
+
+    -- ev -> continue $ state & filterStateL %~ (Filter.handleEvent ev)
+    --             %~ applyFilter
     ev -> do
-      newFilterEditor <- handleEditorEvent ev (state^.filterEditor)
-      let newEditorState = state & filterEditor .~ newFilterEditor
-      continue $ newEditorState & libraryArtists .~ (list (UIName "filtered-artists") (V.fromList (getFilteredLibrary newEditorState)) 1)
+      newFilterState <- Filter.handleEvent ev $ state^.filterStateL
+      continue $ applyFilter (state & filterStateL .~ newFilterState)
   False -> case e of
     (Vty.EvKey (Vty.KChar 'j') []) -> case activeColumn of
       ArtistsColumn -> nextArtist state
@@ -166,9 +179,11 @@ event state (VtyEvent e) = case (state^.filterFocused) of
     (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> continue state
     -- (Vty.EvKey Vty.KEnter []) -> play state
     (Vty.EvKey (Vty.KChar 'q') []) -> halt state
-    (Vty.EvKey (Vty.KChar 'f') []) -> continue (state & filterActive .~ True
-                                                  & filterFocused .~ True)
-    (Vty.EvKey Vty.KEsc []) -> case (state^.filterActive) of
+    -- (Vty.EvKey (Vty.KChar 'f') []) -> continue (state & filterActive .~ True
+    --                                               & filterFocused .~ True)
+    (Vty.EvKey (Vty.KChar 'f') []) -> continue $ state & filterStateL %~ Filter.focus
+    -- (Vty.EvKey Vty.KEsc []) -> case (state^.filterActive) of
+    (Vty.EvKey Vty.KEsc []) -> case (state^.filterStateL.isActiveL) of
       True -> continue $ resetFilter state
       False -> continue state
     -- VtyEvent (Vty.EvKey (Vty.KChar '1') []) -> changeView state 1
@@ -178,37 +193,50 @@ event state (VtyEvent e) = case (state^.filterFocused) of
   where activeColumn = state^.libraryActiveColumn
 event state _ = continue state
 
+-- applyFilter :: (Show n, Ord n) => AppState n -> AppState n
+applyFilter :: AppState UIName -> AppState UIName
+applyFilter state = state & libraryArtists .~ (list (UIName "filtered-artists") (V.fromList (getFilteredLibrary state)) 1)
+
 -- getFilteredLibrary :: AppState -> List UIName ArtistName
 -- getFilteredLibrary state = filterLibrary ft (state^.libraryArtists)
 --   where ft = concat $ getEditContents (state^.filterEditor)
 
-resetFilter :: AppState -> AppState
-resetFilter state = state & filterActive .~ False
-                          & filterFocused .~ False
-                          & filterEditor %~ clearFilterEditor
+-- resetFilter :: AppState -> AppState
+-- resetFilter state = state & filterActive .~ False
+--                           & filterFocused .~ False
+--                           & filterEditor %~ clearFilterEditor
+--                           & libraryArtists .~ artistsWidget
+--   where
+--     artistsWidget = list (UIName "filtered-artists") artists 1
+--     artists = V.fromList . keys $ state^.library.artistsL
+
+-- resetFilter :: AppState n -> AppState n
+resetFilter :: AppState UIName -> AppState UIName
+resetFilter state = state & filterStateL %~ Filter.reset
                           & libraryArtists .~ artistsWidget
   where
     artistsWidget = list (UIName "filtered-artists") artists 1
     artists = V.fromList . keys $ state^.library.artistsL
 
-getFilteredLibrary :: AppState -> [ArtistName]
+getFilteredLibrary :: AppState n -> [ArtistName]
 getFilteredLibrary state = filterLibrary ft (keys (state^.library.artistsL))
-  where ft = concat $ getEditContents (state^.filterEditor)
+  -- where ft = concat $ getEditContents (state^.filterEditor)
+  where ft = Filter.getValue $ state^.filterStateL
 
 filterLibrary :: Text -> [ArtistName] -> [ArtistName]
 filterLibrary ft as = pack <$> filtered
   where filtered = simpleFilter (unpack ft) (unpack <$> as)
 
-clearFilterEditor :: Editor Text UIName -> Editor Text UIName
-clearFilterEditor editor = applyEdit (\_ -> textZipper [""] (Just 1)) editor
+-- clearFilterEditor :: Editor Text UIName -> Editor Text UIName
+-- clearFilterEditor editor = applyEdit (\_ -> textZipper [""] (Just 1)) editor
 
-nextArtist :: AppState -> NextState
+nextArtist :: AppState UIName -> NextState UIName
 nextArtist state = continue $ updateSongs $ updateAlbums (state & libraryArtists %~ listMoveDown)
 
-previousArtist :: AppState -> NextState
+previousArtist :: AppState UIName -> NextState UIName
 previousArtist state = continue $ updateSongs $ updateAlbums (state & libraryArtists %~ listMoveUp)
 
-updateAlbums :: AppState -> AppState
+updateAlbums :: AppState UIName -> AppState UIName
 updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 1)
   where
     selArtist = snd <$> (listSelectedElement $ state^.libraryArtists)
@@ -217,7 +245,7 @@ updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 
       Just a -> fromMaybe V.empty ((V.fromList . Set.toAscList) <$> (lookup a (state^.filteredLibrary.artistsL)))
       Nothing -> V.empty
 
-updateSongs :: AppState -> AppState
+updateSongs :: AppState UIName -> AppState UIName
 updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSongsWidget)
   where
     -- tag key def song = concat (pack <$> toString <$> findWithDefault [fromString def] key (sgTags song))
@@ -232,19 +260,19 @@ updateSongs state = state & librarySongs .~ (map (tag Title "<no title>") newSon
       Just a -> fromMaybe V.empty (lookup a (state^.filteredLibrary.albumsL))
       Nothing -> V.empty
 
-nextAlbum :: AppState -> NextState
+nextAlbum :: AppState UIName  -> NextState UIName
 nextAlbum state = continue $ updateSongs $ state & libraryAlbums %~ listMoveDown
 
-previousAlbum :: AppState -> NextState
+previousAlbum :: AppState UIName -> NextState UIName
 previousAlbum state = continue $ updateSongs $ state & libraryAlbums %~ listMoveUp
 
-nextSong :: AppState -> NextState
+nextSong :: AppState n -> NextState n
 nextSong state = continue $ state & librarySongs %~ listMoveDown
 
-previousSong :: AppState -> NextState
+previousSong :: AppState n -> NextState n
 previousSong state = continue $ state & librarySongs %~ listMoveUp
 
-nextColumn :: AppState -> NextState
+nextColumn :: AppState n -> NextState n
 nextColumn state = continue $ state & libraryActiveColumn .~ nextCol
   where
     nextCol = case (state^.libraryActiveColumn) of
@@ -252,7 +280,7 @@ nextColumn state = continue $ state & libraryActiveColumn .~ nextCol
                 AlbumsColumn -> SongsColumn
                 SongsColumn -> SongsColumn
 
-previousColumn :: AppState -> NextState
+previousColumn :: AppState n  -> NextState n
 previousColumn state = continue $ state & libraryActiveColumn .~ prevCol
   where
     prevCol = case (state^.libraryActiveColumn) of
@@ -260,7 +288,7 @@ previousColumn state = continue $ state & libraryActiveColumn .~ prevCol
                 AlbumsColumn -> ArtistsColumn
                 SongsColumn -> AlbumsColumn
 
-getSelected :: AppState -> (Maybe Text, Maybe Text, Maybe Text)
+getSelected :: AppState n -> (Maybe Text, Maybe Text, Maybe Text)
 getSelected state = (artist, album, title)
   where
     activeColumn = state^.libraryActiveColumn
@@ -273,7 +301,7 @@ getSelected state = (artist, album, title)
       False -> Nothing
 
 
-addSelectedToPlaylist :: AppState -> IO ()
+addSelectedToPlaylist :: AppState n -> IO ()
 addSelectedToPlaylist state = addToPlaylist $ getSelected state
 
 -- libraryEvent :: Vty.Event -> AppState -> NextState

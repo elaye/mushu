@@ -23,14 +23,14 @@ import Brick.Util (fg, on)
 
 import qualified Graphics.Vty as V
 
-import UI.Types (AppState(..), UIName)
+import UI.Types (AppState(..))
 import UI.Utils (secondsToTime)
 
 -- import Data.Map.Lazy (findWithDefault)
 import Network.MPD (Song(..), Metadata(..), toString, Value)
 import MPD (tag)
 
-mkWidget :: List UIName Song -> Widget UIName
+mkWidget :: (Show n, Ord n) => List n Song -> Widget n
 mkWidget playlist = header <=> hBorder <=> renderList listDrawElement True playlist
   where
     header = artist <+> track <+> title <+> album <+> time
@@ -40,7 +40,7 @@ mkWidget playlist = header <=> hBorder <=> renderList listDrawElement True playl
     album = column (Just 35) (Pad 2) Max $ str "Album"
     time = column (Just 8) Max (Pad 1) $ str "Time"
 
-listDrawElement ::  Bool -> Song -> Widget UIName
+listDrawElement ::  Bool -> Song -> Widget n
 listDrawElement sel song = hCenter $ formatListElement False sel $ artist <+> track <+> title <+> album <+> time
   where
     artist = column (Just 25) (Pad 0) Max $ str. unpack $ tag Artist "<unknown>" song
@@ -50,13 +50,13 @@ listDrawElement sel song = hCenter $ formatListElement False sel $ artist <+> tr
     time = column (Just 8) Max (Pad 1) $ str . unpack $ secondsToTime $ sgLength song
 
 -- Make a column considering a left padding, a right padding and an optional width
-column :: Maybe Int -> Padding -> Padding -> Widget UIName -> Widget UIName
+column :: Maybe Int -> Padding -> Padding -> Widget n -> Widget n
 column maybeWidth left right widget = case maybeWidth of
   Nothing -> w
   Just wth -> hLimit wth $ w
   where w = padLeft left $ padRight right $ widget
 
-formatListElement :: Bool -> Bool -> Widget UIName -> Widget UIName
+formatListElement :: Bool -> Bool -> Widget n -> Widget n
 formatListElement playing sel widget = withAttr attr widget
   where attr = case playing of
                 True -> case sel of

@@ -5,9 +5,7 @@ module UI.Views.Help
 import Brick.Types (Widget)
 import Brick.Widgets.Core (str)
 
-import UI.Types (UIName)
-
-draw :: [Widget UIName]
+draw :: [Widget n]
 draw = [ str "help"
        , str "j    move down"
        , str "k    move up"
