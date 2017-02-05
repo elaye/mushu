@@ -51,7 +51,7 @@ import UI.Types (AppState(..), UIName(..), LibraryColumn(..), library, libraryAc
 import UI.Utils (listGetSelected)
 
 import Text.Fuzzy (simpleFilter)
-import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents)
+import Brick.Widgets.Edit (Editor, applyEdit, renderEditor, handleEditorEvent, getEditContents, editAttr)
 import Data.Text.Zipper (textZipper)
 
 type NextState = EventM UIName (Next AppState)
@@ -59,7 +59,7 @@ type NextState = EventM UIName (Next AppState)
 draw :: AppState -> [Widget UIName]
 draw state = Main.draw state $ widget
   where
-    fzf = str "Filter: " <+> renderEditor True (state^.filterEditor) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
+    fzf = str "Filter: " <+> (withAttr filterAttrName (renderEditor (state^.filterFocused) (state^.filterEditor))) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
     columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
     column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
     title t = (padRight Max $ str t) <=> hBorder
@@ -129,14 +129,18 @@ activeColAttrName = listAttrName <> "active-column"
 selActiveColAttrName :: AttrName
 selActiveColAttrName = listSelAttrName <> "selected-active-column"
 
+filterAttrName :: AttrName
+filterAttrName = editAttr
+
 attrs :: [(AttrName, Vty.Attr)]
 -- attrs = [ (listAttrName, fg Vty.white)
 attrs = [ (listAttrName, Vty.white `on` Vty.brightBlack)
 -- attrs = [ (listAttrName, Vty.defAttr)
-        , (listSelAttrName, Vty.black `on` Vty.white)
+        , (listSelAttrName, Vty.black `on` Vty.yellow)
         , (activeColAttrName, fg Vty.white)
         , (selActiveColAttrName, Vty.black `on` Vty.green)
         , (listSelectedFocusedAttr, fg Vty.red)
+        , (filterAttrName, fg Vty.yellow)
         ]
 
 event :: AppState -> BrickEvent UIName e -> EventM UIName (Next AppState)
