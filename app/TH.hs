@@ -18,7 +18,7 @@ import Lens.Micro.TH (DefName(..), makeLensesWith, lensRules, lensField)
 -- underscoreNoPrefixSuffixNamer :: TH.FieldNamer
 underscoreNoPrefixSuffixNamer _ _ n =
   case TH.nameBase n of
-    '_':x:xs -> [TopName (TH.mkName ((toLower (x:xs)) ++ "L"))]
+    '_':x:xs -> [TopName (TH.mkName ((x:xs) ++ "L"))]
     _        -> []
 
 -- | A template haskell function to build lenses for a record type.
