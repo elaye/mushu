@@ -9,6 +9,7 @@ module MPD
 , fetchStatus
 , clearPlaylist
 , addToPlaylist
+, addToPlaylistAndPlay
 , setVolume
 , tag
 , mpdReq
@@ -24,6 +25,7 @@ import Network.MPD
   , Status(..)
   , Song(..)
   , Metadata(..)
+  , Query
   , Artist
   , Album
   , def
@@ -100,10 +102,10 @@ fetchStatus = do
 clearPlaylist :: IO ()
 clearPlaylist = void $ withMPD clear
 
-addToPlaylist :: (Maybe Text, Maybe Text, Maybe Text) -> IO ()
-addToPlaylist (Nothing, _, _) = print "unknown artist for adding to playlist"
-addToPlaylist (Just artist, maybeAlbum, maybeTitle) = do
-  let
+mkQuery :: (Maybe Text, Maybe Text, Maybe Text) -> Maybe Query
+mkQuery (Nothing, _, _) = Nothing
+mkQuery (Just artist, maybeAlbum, maybeTitle) = Just queryArtistAlbumTitle
+  where
     toValue = fromString . unpack
     queryArtist = Artist =? (toValue artist)
     queryArtistAlbum = case maybeAlbum of
@@ -112,10 +114,25 @@ addToPlaylist (Just artist, maybeAlbum, maybeTitle) = do
     queryArtistAlbumTitle = case maybeTitle of
       Just title -> queryArtistAlbum <&> Title =? (toValue title)
       Nothing -> queryArtistAlbum
-  res <- withMPD $ findAdd queryArtistAlbumTitle
-  case res of
-    Left err -> throw MPDException
-    Right _ -> return ()
+
+addToPlaylist :: (Maybe Text, Maybe Text, Maybe Text) -> IO ()
+addToPlaylist selection = do
+  let query = mkQuery selection
+  case query of
+    Nothing -> print "Missing artist" >> return ()
+    Just q -> do
+      res <- withMPD $ findAdd q
+      case res of
+        Left err -> throw MPDException
+        Right _ -> return ()
+
+addToPlaylistAndPlay :: (Maybe Text, Maybe Text, Maybe Text) -> IO ()
+addToPlaylistAndPlay (Nothing, _, _) = print "unknown artist for adding to playlist"
+addToPlaylistAndPlay selection = do
+  n <- length <$> fetchPlaylist
+  void $ addToPlaylist selection
+  r <- withMPD $ play (Just n)
+  return ()
 
 setVolume :: Int -> IO ()
 setVolume volume = void $ withMPD $ M.setVolume volume

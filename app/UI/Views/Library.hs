@@ -16,6 +16,7 @@ import Data.Vector ((!), (!?), empty)
 import qualified UI.Views.Main as Main
 import Network.MPD (Song(..), Metadata(..), toString)
 import MPD (tag, addToPlaylist)
+import qualified MPD
 
 import Brick.Types (Widget(..), Padding(..), BrickEvent(..), EventM, Next)
 import Brick.Widgets.List
@@ -143,6 +144,7 @@ event state (VtyEvent e) = case (state^.filterStateL.isFocusedL) of
     (Vty.EvKey (Vty.KChar 'l') []) -> nextColumn state
     (Vty.EvKey (Vty.KChar 'h') []) -> previousColumn state
     (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> continue state
+    (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> continue state
     -- (Vty.EvKey Vty.KEnter []) -> play state
     (Vty.EvKey (Vty.KChar 'q') []) -> halt state
     (Vty.EvKey (Vty.KChar 'f') []) -> continue $ state & filterStateL %~ Filter.focus
@@ -242,6 +244,9 @@ getSelected state = (artist, album, title)
 
 addSelectedToPlaylist :: AppState n -> IO ()
 addSelectedToPlaylist state = addToPlaylist $ getSelected state
+
+addToPlaylistAndPlay :: AppState n -> IO ()
+addToPlaylistAndPlay state = MPD.addToPlaylistAndPlay $ getSelected state
 
 -- libraryEvent :: Vty.Event -> AppState -> NextState
 -- libraryEvent event state = continue =<< (\m -> state & filteredLibrary .~ m) <$> handleLibraryEvent event (state^.library)
