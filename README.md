@@ -7,6 +7,9 @@ The interface is largely inspired by [ncmpcpp](https://github.com/arybczak/ncmpc
 
 ![Screenshot](screenshot.png?raw=true "Mushu screenshot")
 
+This client was made to fit my needs so it may not fit yours.
+A lot of MPD features are not implemented.
+
 Dependencies
 --------------
 
