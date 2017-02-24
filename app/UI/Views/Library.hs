@@ -61,7 +61,12 @@ draw :: (Show n, Ord n) => AppState n -> [Widget n]
 draw state = Main.draw state $ widget
   where
     fzf = Filter.mkWidget $ state^.filterStateL
-    columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+    -- columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+    columns = case (state^.libraryMode) of
+      ArtistsAlbumsSongsMode -> column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+      AlbumsSongsMode -> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+      SongsMode -> column "Songs" False songsWidget
+
     column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
     title t = (padRight Max $ str t) <=> hBorder
 
@@ -148,6 +153,7 @@ event state (VtyEvent e) = case (state^.filterStateL.isFocusedL) of
     -- (Vty.EvKey Vty.KEnter []) -> play state
     (Vty.EvKey (Vty.KChar 'q') []) -> halt state
     (Vty.EvKey (Vty.KChar 'f') []) -> continue $ state & filterStateL %~ Filter.focus
+    (Vty.EvKey (Vty.KChar 't') []) -> continue $ state & libraryMode %~ cycleMode
     (Vty.EvKey Vty.KEsc []) -> case (state^.filterStateL.isActiveL) of
       True -> continue $ resetFilter state
       False -> continue state
@@ -250,3 +256,9 @@ addToPlaylistAndPlay state = MPD.addToPlaylistAndPlay $ getSelected state
 
 -- libraryEvent :: Vty.Event -> AppState -> NextState
 -- libraryEvent event state = continue =<< (\m -> state & filteredLibrary .~ m) <$> handleLibraryEvent event (state^.library)
+
+cycleMode :: LibraryMode -> LibraryMode
+cycleMode mode = case mode of
+  ArtistsAlbumsSongsMode -> AlbumsSongsMode
+  AlbumsSongsMode -> SongsMode
+  SongsMode -> ArtistsAlbumsSongsMode

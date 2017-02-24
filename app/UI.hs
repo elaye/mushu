@@ -108,6 +108,7 @@ initialState playlist library status = AppState
   , _libraryAlbums = list (UIName "albums") firstArtistAlbums 1
   , _librarySongs = list (UIName "songs") V.empty 1
   , _libraryActiveColumn = ArtistsColumn
+  , _libraryMode = ArtistsAlbumsSongsMode
   , _status = status
   , _helpActive = False
   }
