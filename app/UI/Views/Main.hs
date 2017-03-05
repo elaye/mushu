@@ -16,6 +16,7 @@ import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Help as Help
 import qualified UI.Widgets.Command as Command
 import qualified UI.Widgets.Notification as Notification
+import UI.Widgets.Playlist (playingSongL)
 
 import UI.Types
 
@@ -26,7 +27,7 @@ draw state widget = [ui]
         ui = vCenter $ vBox widgets
         view = hBorder <=> (hCenter (str $ show (state^.activeView)))
         widgets = [--Help.mkWidget
-                   Status.mkWidget state
+                   Status.mkWidget state (state^.playlistStateL.playingSongL)
                   , hBorder
                   , hCenter widget
                   , view

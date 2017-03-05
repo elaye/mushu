@@ -79,8 +79,8 @@ handleViewEvent state event = case state^.activeView of
 updatePlaylist :: AppState UIName -> NextState UIName
 updatePlaylist state = do
   songs <- liftIO $ fetchPlaylist
-  let playlistWidget = list (UIName "playlist") (fromList songs) 1
-  M.continue $ state & playlist .~ playlistWidget
+  -- let playlistWidget = list (UIName "playlist") (fromList songs) 1
+  M.continue $ state & playlistStateL %~ (Playlist.update songs)
 
 updateStatus :: AppState n -> NextState n
 updateStatus state = do
@@ -101,7 +101,8 @@ changeVolume f state = case volume of
 
 initialState :: [Song] -> Library -> Status -> AppState UIName
 initialState playlist library status = AppState
-  { _playlist = list (UIName "playlist") (fromList playlist) 1
+  -- { _playlist = list (UIName "playlist") (fromList playlist) 1
+  { _playlistStateL = Playlist.mkState (UIName "playlist") playlist
   , _filterStateL = Filter.mkState (UIName "filter")
   , _activeView = LibraryView
   , _libraryStateL = LibraryWidget.mkState (UIName "artists") (UIName "albums") (UIName "songs") library

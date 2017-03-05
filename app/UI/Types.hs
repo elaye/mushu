@@ -8,7 +8,7 @@ module UI.Types
 , UIName(..)
 -- , LibraryMode(..)
 , activeView
-, playlist
+, playlistStateL
 , helpActive
 , filterStateL
 , libraryStateL
@@ -31,6 +31,7 @@ import qualified Brick.Widgets.List as L
 import UI.Widgets.Filter
 import UI.Widgets.Notification
 import UI.Widgets.Library
+import UI.Widgets.Playlist
 
 -- import Data.Map.Strict (Map(..))
 
@@ -49,7 +50,7 @@ instance Show ViewType where
 -- data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode | SongsMode deriving (Show, Eq)
 
 data AppState n = AppState
-  { _playlist :: L.List n M.Song
+  { _playlistStateL :: PlaylistState n
   , _filterStateL :: FilterState n
   , _activeView :: ViewType
   , _libraryStateL :: LibraryState n

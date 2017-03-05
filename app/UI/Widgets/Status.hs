@@ -55,8 +55,9 @@ attrs = [ (attrName, fg V.white)
         , (stoppedAttrName, fg V.red)
         ]
 
-mkWidget :: AppState n -> Widget n
-mkWidget state = hCenter $ withAttr attrName $ widgets
+-- TODO: make a StatusState data type
+mkWidget :: AppState n -> Maybe Song -> Widget n
+mkWidget state playingSong = hCenter $ withAttr attrName $ widgets
   where
     widgets = hBox $
       [ str " " <=> (hLimit 15 (padRight Max playbackState))
@@ -64,10 +65,9 @@ mkWidget state = hCenter $ withAttr attrName $ widgets
       , str " " <=> (hLimit 15 (padLeft Max volume))
       ]
     st = state^.status
-    currentSong = (stSongPos st) >>= (\i -> (state^.playlist.listElementsL) !? i)
-    title = hCenter $ withAttr titleAttrName $ mkTagWidget Title "<untitled>" currentSong
-    artist = withAttr artistAttrName $ mkTagWidget Artist "<unknown artist>" currentSong
-    album = withAttr albumAttrName $ mkTagWidget Album "<unknown album>" currentSong
+    title = hCenter $ withAttr titleAttrName $ mkTagWidget Title "<untitled>" playingSong
+    artist = withAttr artistAttrName $ mkTagWidget Artist "<unknown artist>" playingSong
+    album = withAttr albumAttrName $ mkTagWidget Album "<unknown album>" playingSong
     artistAlbum = hCenter $ artist <+> (str " - ") <+> album
     playbackState = mkStateWidget st
     volume = mkVolumeWidget st
