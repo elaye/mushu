@@ -15,6 +15,7 @@ import Lens.Micro.Platform ((^.))
 import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Help as Help
 import qualified UI.Widgets.Command as Command
+import qualified UI.Widgets.Notification as Notification
 
 import UI.Types
 
@@ -29,6 +30,7 @@ draw state widget = [ui]
                   , hBorder
                   , hCenter widget
                   , view
+                  , Notification.mkWidget (state^.notificationState)
                   -- , Command.mkWidget
                   ]
 

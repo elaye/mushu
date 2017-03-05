@@ -27,6 +27,7 @@ import qualified UI.Views.Help as HelpView
 import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Playlist as Playlist
 import qualified UI.Widgets.Filter as Filter
+import qualified UI.Widgets.Notification as Notification
 import UI.Widgets.Filter (isFocusedL)
 
 import Brick.Types (Widget, EventM, Next(..), BrickEvent(..))
@@ -110,6 +111,7 @@ initialState playlist library status = AppState
   , _libraryActiveColumn = ArtistsColumn
   , _status = status
   , _helpActive = False
+  , _notificationState = Notification.mkState
   }
   where
     artists = library^.artistsL

@@ -16,6 +16,7 @@ module UI.Types
 , librarySongs
 , libraryActiveColumn
 , filteredLibrary
+, notificationState
 , status
 ) where
 
@@ -25,6 +26,7 @@ import qualified Brick.Widgets.List as L
 import Library
 
 import UI.Widgets.Filter
+import UI.Widgets.Notification
 
 import Data.Map.Strict (Map(..))
 
@@ -53,6 +55,7 @@ data AppState n = AppState
   , _libraryActiveColumn :: LibraryColumn
   , _status :: M.Status
   , _helpActive :: Bool
+  , _notificationState :: NotificationState
   }
 
 data UIName = UIName Text deriving (Show, Eq, Ord)
