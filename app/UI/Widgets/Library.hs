@@ -53,7 +53,6 @@ makeSuffixLenses ''LibraryState
 mkWidget :: (Show n, Ord n) => LibraryState n -> Widget n
 mkWidget state = columns
   where
-    -- columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
     columns = case state^.libraryModeL of
       ArtistsAlbumsSongsMode -> column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
       AlbumsSongsMode -> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
@@ -66,7 +65,6 @@ mkWidget state = columns
     albumsWidget = columnWidget AlbumsColumn (state^.libraryAlbumsL)
     songsWidget = columnWidget SongsColumn (state^.librarySongsL)
 
-    -- columnWidget column els = renderList (listDrawElement column activeColumn) False els
     columnWidget col = renderList (listDrawElement col activeColumn) False
     activeColumn = state^.libraryActiveColumnL
 
@@ -77,11 +75,6 @@ listDrawElement column activeColumn sel el = hCenter $ formatListElement column 
 
 formatListElement :: LibraryColumn -> LibraryColumn -> Bool -> Widget n -> Widget n
 formatListElement column activeColumn sel = withAttr attr
-  -- where
-  --   attr = if column == activeColumn then
-  --         (if sel then selActiveColAttrName else activeColAttrName) else
-  --         (if columnIsBefore column activeColumn then
-  --           (if sel then listSelAttrName else listAttrName) else listAttrName)
   where
     attr
      | column == activeColumn =
@@ -149,7 +142,6 @@ handleEvent event state = case event of
   (Vty.EvKey (Vty.KChar 'h') []) -> return $ previousColumn state
   (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> return state
   (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return state
-  -- (Vty.EvKey Vty.KEnter []) -> play state
   (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ cycleMode
   _ -> return state
   where activeColumn = state^.libraryActiveColumnL
@@ -173,7 +165,6 @@ previousSong :: LibraryState n -> LibraryState n
 previousSong state = state & librarySongsL %~ listMoveUp
 
 updateAlbums :: LibraryState n -> LibraryState n
--- updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 1)
 updateAlbums state = state & libraryAlbumsL %~ listReplace newAlbums (Just 0)
   where
     selArtist = snd <$> listSelectedElement (state^.libraryArtistsL)
@@ -182,17 +173,11 @@ updateAlbums state = state & libraryAlbumsL %~ listReplace newAlbums (Just 0)
       Nothing -> V.empty
 
 updateSongs :: LibraryState n -> LibraryState n
--- updateSongs state = state & librarySongsL .~ (map (tag Title "<no title>") newSongsWidget)
--- updateSongs state = state & librarySongsL .~ newSongsWidget
 updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered) (Just 0)
   where
     selAlbum = snd <$> listSelectedElement (state^.libraryAlbumsL)
     selArtist = snd <$> listSelectedElement (state^.libraryArtistsL)
-    -- newSongsWidget = list (UIName "songs") newSongsFiltered 1
-    -- newSongsWidget = listReplace newSongsFiltered Nothing $ toTxt (state^.librarySongsL)
     toTxt = map (tag Title "<no title>")
-    -- newSongsWidget = state & librarySongsL %~ (listReplace newSongsFiltered Nothing)
-    -- Songs are filtered by the selected artist if we are in artist/album/songs mode
     newSongsFiltered = case selArtist of
       Just a -> filter (\s -> tag Artist "" s == a) newSongs
       Nothing -> newSongs
@@ -225,7 +210,6 @@ getSelected state = (artist, album, title)
       listGetSelected $ state^.libraryAlbumsL else Nothing
     title = if activeColumn == SongsColumn then
       listGetSelected $ state^.librarySongsL else Nothing
-
 
 addSelectedToPlaylist :: LibraryState n -> IO ()
 addSelectedToPlaylist state = addToPlaylist $ getSelected state
