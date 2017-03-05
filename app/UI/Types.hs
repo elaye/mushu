@@ -3,21 +3,22 @@
 module UI.Types
 ( AppState(..)
 , ViewType(..)
-, LibraryColumn(..)
+-- , LibraryColumn(..)
 , MPDEvent(..)
 , UIName(..)
-, LibraryMode(..)
+-- , LibraryMode(..)
 , activeView
 , playlist
 , helpActive
 , filterStateL
-, library
-, libraryArtists
-, libraryAlbums
-, librarySongs
-, libraryActiveColumn
-, libraryMode
-, filteredLibrary
+, libraryStateL
+-- , library
+-- , libraryArtists
+-- , libraryAlbums
+-- , librarySongs
+-- , libraryActiveColumn
+-- , libraryMode
+-- , filteredLibrary
 , notificationState
 , status
 ) where
@@ -25,15 +26,16 @@ module UI.Types
 import ClassyPrelude
 
 import qualified Brick.Widgets.List as L
-import Library
+-- import Library
 
 import UI.Widgets.Filter
 import UI.Widgets.Notification
+import UI.Widgets.Library
 
-import Data.Map.Strict (Map(..))
+-- import Data.Map.Strict (Map(..))
 
 import Lens.Micro.Platform (makeLenses)
-import qualified Graphics.Vty as V
+-- import qualified Graphics.Vty as V
 
 import qualified Network.MPD as M
 
@@ -43,20 +45,21 @@ instance Show ViewType where
   show PlaylistView = "Playlist"
   show LibraryView = "Library"
 
-data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
-data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode | SongsMode deriving (Show, Eq)
+-- data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
+-- data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode | SongsMode deriving (Show, Eq)
 
 data AppState n = AppState
   { _playlist :: L.List n M.Song
   , _filterStateL :: FilterState n
   , _activeView :: ViewType
-  , _library :: Library
-  , _filteredLibrary :: Library
-  , _libraryArtists :: L.List n Text
-  , _libraryAlbums :: L.List n Text
-  , _librarySongs :: L.List n Text
-  , _libraryActiveColumn :: LibraryColumn
-  , _libraryMode :: LibraryMode
+  , _libraryStateL :: LibraryState n
+  -- , _library :: Library
+  -- , _filteredLibrary :: Library
+  -- , _libraryArtists :: L.List n Text
+  -- , _libraryAlbums :: L.List n Text
+  -- , _librarySongs :: L.List n Text
+  -- , _libraryActiveColumn :: LibraryColumn
+  -- , _libraryMode :: LibraryMode
   , _status :: M.Status
   , _helpActive :: Bool
   , _notificationState :: NotificationState

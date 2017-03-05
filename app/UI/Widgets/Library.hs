@@ -1,239 +1,254 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module UI.Widgets.Library
-( fetchLibrary
-, libraryMoveUp
-, libraryMoveDown
-, Library(..)
-, ArtistAlbums(..)
-, artistAlbums
-, albums
+( mkState
 , mkWidget
+, LibraryState
+, handleEvent
+, applyFilter
+, resetFilter
 , attrs
 ) where
 
 import ClassyPrelude hiding ((<>), on)
 import Data.Monoid ((<>))
 
-import Lens.Micro.Platform (makeLenses, (^.), (&), (.~))
+import TH (makeSuffixLenses)
+import Lens.Micro.Platform ((^.), (&), (.~), (%~))
 
-import qualified Network.MPD as M
-import Network.MPD ((=?), (<&>))
-
-import qualified Brick.Widgets.List as L
-import Brick.Widgets.Core (Named(..), withDefAttr, visible, viewport, translateBy, vBox, withAttr, str, padRight)
-import Brick.Types (Widget(..), EventM, Size(..), getContext, availHeightL, ViewportType(..), Location(..), Padding(..))
+import Brick.Widgets.Core ((<+>), (<=>), str, padLeft, padRight, withAttr)
+import Brick.Widgets.Center (hCenter)
+import Brick.Widgets.Border (vBorder, hBorder)
+import Brick.Types (EventM, Widget, Padding(..))
 import Brick.AttrMap (AttrName)
+import Brick.Widgets.List (List(..), list, listMoveDown, listMoveUp, listReplace, listSelectedElement, renderList, listAttr, listSelectedAttr, listSelectedFocusedAttr, listElementsL)
 import Brick.Util (clamp, fg, on)
-import Graphics.Vty (Event(..), Key(..), white, black, green, brightBlack, Attr(..))
+import qualified Graphics.Vty as Vty
 
-import qualified Data.Map.Strict as Map
+import Data.Map.Strict (elemAt)
 import qualified Data.Vector as V
-import Data.Vector ((!))
+import qualified Data.Set as Set
 
-type ArtistName = Text
-type AlbumName = Text
+-- import Network.MPD (Song(..), Metadata(..), toString)
+import Network.MPD (Metadata(..))
+import MPD (tag, addToPlaylist)
+import qualified MPD
+import UI.Utils (listGetSelected)
 
-data ArtistAlbums n = ArtistAlbums
-  -- { _albums :: Map AlbumName (Vector M.Song)
-  { _albums :: Map AlbumName (L.List n M.Song)
-  , _albumKeys :: V.Vector Text
-  , _selectedAlbum :: Maybe Int
-  } deriving (Show)
+import Library
 
-makeLenses ''ArtistAlbums
+data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
+data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode | SongsMode deriving (Show, Eq)
 
-data Library n = Library
-  { _artistAlbums :: Map ArtistName (ArtistAlbums n)
-  , _artistKeys :: V.Vector Text
-  , _selectedArtist :: Maybe Int
-  , _name :: n
-  } deriving (Show)
+data LibraryState n = LibraryState
+  { _library :: Library
+  , _filteredLibrary :: Library
+  , _libraryArtists :: List n Text
+  , _libraryAlbums :: List n Text
+  , _librarySongs :: List n Text
+  , _libraryActiveColumn :: LibraryColumn
+  , _libraryMode :: LibraryMode
+  }
 
-makeLenses ''Library
+makeSuffixLenses ''LibraryState
 
-instance Named (Library n) n where
-  getName = _name
+mkWidget :: (Show n, Ord n) => LibraryState n -> Widget n
+mkWidget state = columns
+  where
+    -- columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+    columns = case (state^.libraryModeL) of
+      ArtistsAlbumsSongsMode -> column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+      AlbumsSongsMode -> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
+      SongsMode -> column "Songs" False songsWidget
 
-libraryItemHeight :: Int
-libraryItemHeight = 1
+    column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
+    title t = (padRight Max $ str t) <=> hBorder
 
--- | The top-level attribute used for the entire library.
-libraryAttr :: AttrName
-libraryAttr = "library"
+    artistsWidget = columnWidget ArtistsColumn (state^.libraryArtistsL)
+    albumsWidget = columnWidget AlbumsColumn (state^.libraryAlbumsL)
+    songsWidget = columnWidget SongsColumn (state^.librarySongsL)
 
--- | The attribute used only for the currently-selected library item when
--- the column or the library does not have focus. Extends 'libraryAttr'.
-librarySelectedAttr :: AttrName
-librarySelectedAttr = libraryAttr <> "selected"
+    columnWidget column els = renderList (listDrawElement column activeColumn) False els
+    activeColumn = state^.libraryActiveColumnL
 
--- | The attribute used only for the currently-selected library item when
--- the column or the library has focus. Extends 'librarySelectedAttr'.
-librarySelectedFocusedAttr :: AttrName
-librarySelectedFocusedAttr = librarySelectedAttr <> "focused"
+listDrawElement :: LibraryColumn -> LibraryColumn -> Bool -> Text -> Widget n
+listDrawElement column activeColumn sel el = hCenter $ formatListElement column activeColumn sel $ pad $ str (unpack el)
+  where
+    pad w = padLeft Max $ padRight Max $ w
 
-attrs :: [(AttrName, Attr)]
-attrs = [ (libraryAttr, fg white)
-        , (librarySelectedAttr, black `on` white)
-        , (librarySelectedFocusedAttr, fg brightBlack)
-        -- , (selPlayingAttrName, V.brightBlack `on` V.black)
+formatListElement :: LibraryColumn -> LibraryColumn -> Bool -> Widget n -> Widget n
+formatListElement column activeColumn sel widget = withAttr attr widget
+  where
+    attr = case column == activeColumn of
+          True -> case sel of
+            True -> selActiveColAttrName
+            False -> activeColAttrName
+          False -> case columnIsBefore column activeColumn of
+            True -> case sel of
+              True -> listSelAttrName
+              False -> listAttrName
+            False -> listAttrName
+
+-- TODO: find a better way to do this
+-- column != activeColumn must be true before calling this function
+columnIsBefore :: LibraryColumn -> LibraryColumn -> Bool
+columnIsBefore column activeColumn = case activeColumn of
+  ArtistsColumn -> False
+  SongsColumn -> True
+  AlbumsColumn -> case column of
+    ArtistsColumn -> True
+    SongsColumn -> False
+
+listAttrName :: AttrName
+listAttrName = listAttr <> "custom"
+
+listSelAttrName :: AttrName
+listSelAttrName = listSelectedAttr <> "custom-selected"
+
+activeColAttrName :: AttrName
+activeColAttrName = listAttrName <> "active-column"
+
+selActiveColAttrName :: AttrName
+selActiveColAttrName = listSelAttrName <> "selected-active-column"
+
+attrs :: [(AttrName, Vty.Attr)]
+attrs = [ (listAttrName, Vty.white `on` Vty.black)
+        , (listSelAttrName, Vty.black `on` Vty.yellow)
+        , (activeColAttrName, fg Vty.white)
+        , (selActiveColAttrName, Vty.black `on` Vty.green)
+        , (listSelectedFocusedAttr, fg Vty.red)
         ]
 
-mkWidget :: (Ord n, Show n) => Library n -> Widget n
-mkWidget library = renderLibrary True library
+mkState :: n -> n -> n -> Library -> LibraryState n
+mkState artistsName albumsName songsName library = LibraryState
+  { _library = library
+  , _filteredLibrary = library
+  , _libraryArtists = list artistsName (fromList (keys artists)) 1
+  , _libraryAlbums = list albumsName firstArtistAlbums 1
+  , _librarySongs = list songsName V.empty 1
+  , _libraryActiveColumn = ArtistsColumn
+  , _libraryMode = ArtistsAlbumsSongsMode
+  }
+  where
+    artists = library^.artistsL
+    firstArtistAlbums = V.fromList . Set.toAscList $ snd $ elemAt 0 artists
 
--- | Turn a library state value into a widget given an item drawing
--- function.
-renderLibrary :: (Ord n, Show n)
-           => Bool
-           -- ^ Whether the library has focus
-           -> Library n
-           -- ^ The library to be rendered
-           -> Widget n
-           -- ^ rendered widget
-renderLibrary foc lib =
-    withDefAttr libraryAttr $
-    drawLibraryElements foc lib
+handleEvent :: Vty.Event -> LibraryState n -> EventM n (LibraryState n)
+handleEvent event state = case event of
+  (Vty.EvKey (Vty.KChar 'j') []) -> case activeColumn of
+    ArtistsColumn -> return $ nextArtist state
+    AlbumsColumn -> return $ nextAlbum state
+    SongsColumn -> return $ nextSong state
+  (Vty.EvKey (Vty.KChar 'k') []) -> case activeColumn of
+    ArtistsColumn -> return $ previousArtist state
+    AlbumsColumn -> return $ previousAlbum state
+    SongsColumn -> return $ previousSong state
+  (Vty.EvKey (Vty.KChar 'l') []) -> return $ nextColumn state
+  (Vty.EvKey (Vty.KChar 'h') []) -> return $ previousColumn state
+  (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> return state
+  (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return state
+  -- (Vty.EvKey Vty.KEnter []) -> play state
+  (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ cycleMode
+  ev -> return state
+  where activeColumn = state^.libraryActiveColumnL
 
-drawLibraryElements :: (Ord n, Show n)
-  => Bool
-  -- ^ Whether the library has focus
-  -> Library n
-  -- ^ The map to be rendered
-  -> Widget n
-drawLibraryElements foc lib = drawArtistElements foc lib artistDrawElement-- <> drawAlbumElements <> drawSongElements
+nextArtist :: LibraryState n -> LibraryState n
+nextArtist state = updateSongs $ updateAlbums (state & libraryArtistsL %~ listMoveDown)
 
-artistDrawElement :: Bool -> ArtistName -> Widget n
-artistDrawElement sel artist = padRight Max $ withAttr attr $ str (unpack artist)
-  where attr = case sel of
-                  True -> librarySelectedAttr
-                  False -> libraryAttr
+previousArtist :: LibraryState n -> LibraryState n
+previousArtist state = updateSongs $ updateAlbums (state & libraryArtistsL %~ listMoveUp)
 
-drawArtistElements ::(Ord n, Show n)
-  => Bool
-  -- ^ Whether the artists column has focus
-  -> Library n
-  -- ^ The artists to be rendered
-  -> (Bool -> ArtistName -> Widget n)
-  -- ^ Rendering function, True for the selected element
-  -> Widget n
-drawArtistElements foc l drawElem = Widget Greedy Greedy $ do
-  c <- getContext
-  let es = V.slice start num (l^.artistKeys)
-      idx = fromMaybe 0 (l^.selectedArtist)
+nextAlbum :: LibraryState n  -> LibraryState n
+nextAlbum state = updateSongs $ state & libraryAlbumsL %~ listMoveDown
 
-      start = max 0 $ idx - numPerHeight + 1
-      num = min (numPerHeight * 2) (V.length (l^.artistKeys) - start)
+previousAlbum :: LibraryState n -> LibraryState n
+previousAlbum state = updateSongs $ state & libraryAlbumsL %~ listMoveUp
 
-      numPerHeight = c^.availHeightL
+nextSong :: LibraryState n -> LibraryState n
+nextSong state = state & librarySongsL %~ listMoveDown
 
-      drawnElements = flip V.imap es $ \i e ->
-          let isSelected = Just (i + start) == l^.selectedArtist
-              elemWidget = drawElem isSelected e
-              selItemAttr = if foc
-                            then withDefAttr librarySelectedFocusedAttr
-                            else withDefAttr librarySelectedAttr
-              makeVisible = if isSelected
-                            then visible . selItemAttr
-                            else id
-          in makeVisible elemWidget
+previousSong :: LibraryState n -> LibraryState n
+previousSong state = state & librarySongsL %~ listMoveUp
 
-  render $ viewport (l^.name) Vertical $
-            translateBy (Location (0, start)) $
-            vBox $ V.toList drawnElements
+updateAlbums :: LibraryState n -> LibraryState n
+-- updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 1)
+updateAlbums state = state & libraryAlbumsL %~ (listReplace newAlbums (Just 0))
+  where
+    selArtist = snd <$> (listSelectedElement $ state^.libraryArtistsL)
+    newAlbums = case selArtist of
+      Just a -> fromMaybe V.empty ((V.fromList . Set.toAscList) <$> (lookup a (state^.filteredLibraryL.artistsL)))
+      Nothing -> V.empty
 
--- drawAlbumElements ::(Ord n, Show n)
---   => Bool
---   -- ^ Whether the artists column has focus
---   -> ArtistAlbums n
---   -- ^ The artists to be rendered
---   -> (Bool -> ArtistName -> Widget n)
---   -- ^ Rendering function, True for the selected element
---   -> Widget n
--- drawAlbumElements foc l drawElem = Widget Greedy Greedy $ do
---   c <- getContext
---   let es = V.slice start num (l^.artistKeys)
---       idx = fromMaybe 0 (l^.selectedArtist)
+updateSongs :: LibraryState n -> LibraryState n
+-- updateSongs state = state & librarySongsL .~ (map (tag Title "<no title>") newSongsWidget)
+-- updateSongs state = state & librarySongsL .~ newSongsWidget
+updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered) (Just 0)
+  where
+    selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbumsL)
+    selArtist = snd <$> (listSelectedElement $ state^.libraryArtistsL)
+    -- newSongsWidget = list (UIName "songs") newSongsFiltered 1
+    -- newSongsWidget = listReplace newSongsFiltered Nothing $ toTxt (state^.librarySongsL)
+    toTxt = map (tag Title "<no title>")
+    -- newSongsWidget = state & librarySongsL %~ (listReplace newSongsFiltered Nothing)
+    -- Songs are filtered by the selected artist if we are in artist/album/songs mode
+    newSongsFiltered = case selArtist of
+      Just a -> filter (\s -> tag Artist "" s == a) newSongs
+      Nothing -> newSongs
+    newSongs = case selAlbum of
+      Just a -> fromMaybe V.empty (lookup a (state^.filteredLibraryL.albumsL))
+      Nothing -> V.empty
 
---       start = max 0 $ idx - numPerHeight + 1
---       num = min (numPerHeight * 2) (V.length (l^.artistKeys) - start)
+nextColumn :: LibraryState n -> LibraryState n
+nextColumn state = state & libraryActiveColumnL .~ nextCol
+  where
+    nextCol = case (state^.libraryActiveColumnL) of
+                ArtistsColumn -> AlbumsColumn
+                AlbumsColumn -> SongsColumn
+                SongsColumn -> SongsColumn
 
---       numPerHeight = c^.availHeightL
+previousColumn :: LibraryState n  -> LibraryState n
+previousColumn state = state & libraryActiveColumnL .~ prevCol
+  where
+    prevCol = case (state^.libraryActiveColumnL) of
+                ArtistsColumn -> ArtistsColumn
+                AlbumsColumn -> ArtistsColumn
+                SongsColumn -> AlbumsColumn
 
---       drawnElements = flip V.imap es $ \i e ->
---           let isSelected = Just (i + start) == l^.selectedArtist
---               elemWidget = drawElem isSelected e
---               selItemAttr = if foc
---                             then withDefAttr librarySelectedFocusedAttr
---                             else withDefAttr librarySelectedAttr
---               makeVisible = if isSelected
---                             then visible . selItemAttr
---                             else id
---           in makeVisible elemWidget
+getSelected :: LibraryState n -> (Maybe Text, Maybe Text, Maybe Text)
+getSelected state = (artist, album, title)
+  where
+    activeColumn = state^.libraryActiveColumnL
+    artist = listGetSelected $ state^.libraryArtistsL
+    album = case activeColumn == AlbumsColumn of
+      True -> listGetSelected $ state^.libraryAlbumsL
+      False -> Nothing
+    title = case activeColumn == SongsColumn of
+      True -> listGetSelected $ state^.librarySongsL
+      False -> Nothing
 
---   render $ viewport (l^.name) Vertical $
---             translateBy (Location (0, start)) $
---             vBox $ V.toList drawnElements
 
--- | Move the map selected index up by one. (Moves the cursor up,
--- subtracts one from the index.)
-libraryMoveUp :: Library n -> Library n
-libraryMoveUp = libraryMoveBy (-1)
+addSelectedToPlaylist :: LibraryState n -> IO ()
+addSelectedToPlaylist state = addToPlaylist $ getSelected state
 
--- | Move the map selected index down by one. (Moves the cursor down,
--- adds one to the index.)
-libraryMoveDown :: Library n -> Library n
-libraryMoveDown = libraryMoveBy 1
+addToPlaylistAndPlay :: LibraryState n -> IO ()
+addToPlaylistAndPlay state = MPD.addToPlaylistAndPlay $ getSelected state
 
--- | Move the map selected index by the specified amount, subject to
--- validation.
-libraryMoveBy :: Int -> Library n -> Library n
-libraryMoveBy amt l =
-    let newSel = clamp 0 (V.length (l^.artistKeys) - 1) <$> (amt +) <$> (l^.selectedArtist)
-    in l & selectedArtist .~ newSel
+cycleMode :: LibraryMode -> LibraryMode
+cycleMode mode = case mode of
+  ArtistsAlbumsSongsMode -> AlbumsSongsMode
+  AlbumsSongsMode -> SongsMode
+  SongsMode -> ArtistsAlbumsSongsMode
 
--- mpdReq :: M.MPD a -> IO [M.Value]
-mpdReq :: M.MPD [a] -> IO [a]
-mpdReq req = do
-  res <- M.withMPD req
-  case res of
-    Left err -> (print ("MPD error: " ++ (show err))) >> return []
-    Right r -> return r
+-- TODO: modify this to filter depending on the mode (artists/albums or albums)
+-- Only filter on artists atm
+-- filter :: (Text -> Text) -> LibraryState -> LibraryState
+applyFilter :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
+applyFilter f state = state & libraryArtistsL %~ listReplace (V.fromList filteredArtists) (Just 0)
+  where
+    -- filteredArtists = filter f (state^.libraryArtistsL.listElementsL)
+    -- filteredArtists = f (state^.libraryArtistsL.listElementsL)
+    filteredArtists = f (keys (state^.libraryL.artistsL))
 
-getArtists :: IO [M.Value]
--- getArtists = (take 5) <$> (mpdReq $ M.list M.Artist Nothing)
-getArtists = mpdReq $ M.list M.Artist Nothing
-
-getArtistAlbums :: M.Artist -> IO [M.Value]
--- getArtistAlbums artist = (take 5) <$> (mpdReq $ M.list M.Album (Just artist))
-getArtistAlbums artist = mpdReq $ M.list M.Album (Just artist)
-
-getArtistAlbumSongs :: M.Artist -> M.Album -> IO [M.Song]
--- getArtistAlbumSongs artist album = (take 3) <$> (mpdReq req)
-getArtistAlbumSongs artist album = mpdReq req
-  where req = M.search (M.Artist =? artist <&> M.Album =? album)
-
-fetchLibrary ::(Show n, Eq n, IsString n) => n -> IO (Library n)
--- fetchLibrary :: n -> IO (Library n)
-fetchLibrary name = do
-  artists <- getArtists
-  -- print artists
-  let getAlbums a = fromList <$> (getArtistAlbums a)
-  let getSongs ar al = fromList <$> (getArtistAlbumSongs ar al)
-  let kvAlbum ar al = do
-        ss <- getSongs ar al
-        return (pack (M.toString al), (L.list "list-album-songs" ss 1))
-  let kvArtist ar = do
-        als <- getAlbums ar
-        -- print als
-        -- TODO: check that we really have an ordered list of unique keys
-        -- let as = Map.fromDistinctAscList $ mapM (kvAlbum ar) als
-        as <- Map.fromDistinctAscList <$> (sequence (map (kvAlbum ar) als))
-        return (pack (M.toString ar), ArtistAlbums as (V.fromList (Map.keys as)) (Just 0))
-  -- TODO: check that we really have an ordered list of unique keys
-  -- return $ Map.fromDistinctAscList $ mapM kvArtist artists
-  artistsAlbums <- Map.fromDistinctAscList <$> (sequence (map kvArtist artists))
-  return $ Library artistsAlbums (V.fromList (Map.keys artistsAlbums)) (Just 0) name
-
+resetFilter :: LibraryState n -> LibraryState n
+-- resetFilter state = state & libraryArtistsL %~ listReplace (state^.libraryL.artistsL) Nothing
+resetFilter state = state & libraryArtistsL %~ listReplace artists (Just 0)
+  where artists = V.fromList . keys $ state^.libraryL.artistsL

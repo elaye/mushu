@@ -13,11 +13,11 @@ import Control.Monad (void, forever)
 import Lens.Micro.Platform ((^.), (&), (.~), (%~))
 
 import Data.Default (def)
-import Data.Map.Strict (elemAt)
-import qualified Data.Set as Set
+-- import Data.Map.Strict (elemAt)
+-- import qualified Data.Set as Set
 import Data.List ((!!))
 import Data.HashMap.Strict (elems)
-import qualified Data.Vector as V
+-- import qualified Data.Vector as V
 
 import qualified UI.Utils as Utils
 import qualified UI.Views.Main as MainView
@@ -28,6 +28,7 @@ import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Playlist as Playlist
 import qualified UI.Widgets.Filter as Filter
 import qualified UI.Widgets.Notification as Notification
+import qualified UI.Widgets.Library as LibraryWidget
 import UI.Widgets.Filter (isFocusedL)
 
 import Brick.Types (Widget, EventM, Next(..), BrickEvent(..))
@@ -103,27 +104,28 @@ initialState playlist library status = AppState
   { _playlist = list (UIName "playlist") (fromList playlist) 1
   , _filterStateL = Filter.mkState (UIName "filter")
   , _activeView = LibraryView
-  , _library = library
-  , _filteredLibrary = library
-  , _libraryArtists = list (UIName "artists") (fromList (keys artists)) 1
-  , _libraryAlbums = list (UIName "albums") firstArtistAlbums 1
-  , _librarySongs = list (UIName "songs") V.empty 1
-  , _libraryActiveColumn = ArtistsColumn
-  , _libraryMode = ArtistsAlbumsSongsMode
+  , _libraryStateL = LibraryWidget.mkState (UIName "artists") (UIName "albums") (UIName "songs") library
+  -- , _library = library
+  -- , _filteredLibrary = library
+  -- , _libraryArtists = list (UIName "artists") (fromList (keys artists)) 1
+  -- , _libraryAlbums = list (UIName "albums") firstArtistAlbums 1
+  -- , _librarySongs = list (UIName "songs") V.empty 1
+  -- , _libraryActiveColumn = ArtistsColumn
+  -- , _libraryMode = ArtistsAlbumsSongsMode
   , _status = status
   , _helpActive = False
   , _notificationState = Notification.mkState
   }
-  where
-    artists = library^.artistsL
-    firstArtistAlbums = V.fromList . Set.toAscList $ snd $ elemAt 0 artists
+  -- where
+  --   artists = library^.artistsL
+  --   firstArtistAlbums = V.fromList . Set.toAscList $ snd $ elemAt 0 artists
 
 attributesMap :: AttrMap
 attributesMap = attrMap Vty.defAttr $ concat
   [ Utils.attrs
   , Playlist.attrs
   , Status.attrs
-  , LibraryView.attrs
+  , LibraryWidget.attrs
   , Filter.attrs
   ]
 
