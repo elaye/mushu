@@ -6,6 +6,7 @@ module UI.Types
 , LibraryColumn(..)
 , MPDEvent(..)
 , UIName(..)
+, LibraryMode(..)
 , activeView
 , playlist
 , helpActive
@@ -15,6 +16,7 @@ module UI.Types
 , libraryAlbums
 , librarySongs
 , libraryActiveColumn
+, libraryMode
 , filteredLibrary
 , notificationState
 , status
@@ -42,6 +44,7 @@ instance Show ViewType where
   show LibraryView = "Library"
 
 data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
+data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode | SongsMode deriving (Show, Eq)
 
 data AppState n = AppState
   { _playlist :: L.List n M.Song
@@ -53,6 +56,7 @@ data AppState n = AppState
   , _libraryAlbums :: L.List n Text
   , _librarySongs :: L.List n Text
   , _libraryActiveColumn :: LibraryColumn
+  , _libraryMode :: LibraryMode
   , _status :: M.Status
   , _helpActive :: Bool
   , _notificationState :: NotificationState

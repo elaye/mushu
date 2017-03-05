@@ -1,0 +1,9 @@
+* TODO
+** Refactor library and make a LibraryState ADT
+** Add CI
+
+* Before releasing
+** Clean code
+** Refactor Views / Widgets -> define responsibilities (events, drawing...)
+** Finish README
+
