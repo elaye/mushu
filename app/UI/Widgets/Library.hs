@@ -20,15 +20,14 @@ import Brick.Widgets.Center (hCenter)
 import Brick.Widgets.Border (vBorder, hBorder)
 import Brick.Types (EventM, Widget, Padding(..))
 import Brick.AttrMap (AttrName)
-import Brick.Widgets.List (List(..), list, listMoveDown, listMoveUp, listReplace, listSelectedElement, renderList, listAttr, listSelectedAttr, listSelectedFocusedAttr, listElementsL)
-import Brick.Util (clamp, fg, on)
+import Brick.Widgets.List (List(..), list, listMoveDown, listMoveUp, listReplace, listSelectedElement, renderList, listAttr, listSelectedAttr, listSelectedFocusedAttr)
+import Brick.Util (fg, on)
 import qualified Graphics.Vty as Vty
 
 import Data.Map.Strict (elemAt)
 import qualified Data.Vector as V
 import qualified Data.Set as Set
 
--- import Network.MPD (Song(..), Metadata(..), toString)
 import Network.MPD (Metadata(..))
 import MPD (tag, addToPlaylist)
 import qualified MPD
@@ -55,38 +54,41 @@ mkWidget :: (Show n, Ord n) => LibraryState n -> Widget n
 mkWidget state = columns
   where
     -- columns = column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
-    columns = case (state^.libraryModeL) of
+    columns = case state^.libraryModeL of
       ArtistsAlbumsSongsMode -> column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
       AlbumsSongsMode -> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
       SongsMode -> column "Songs" False songsWidget
 
-    column name bBorder widget = (title name) <=> if bBorder then (widget <+> vBorder) else widget
-    title t = (padRight Max $ str t) <=> hBorder
+    column name bBorder widget = title name <=> if bBorder then widget <+> vBorder else widget
+    title t = padRight Max (str t) <=> hBorder
 
     artistsWidget = columnWidget ArtistsColumn (state^.libraryArtistsL)
     albumsWidget = columnWidget AlbumsColumn (state^.libraryAlbumsL)
     songsWidget = columnWidget SongsColumn (state^.librarySongsL)
 
-    columnWidget column els = renderList (listDrawElement column activeColumn) False els
+    -- columnWidget column els = renderList (listDrawElement column activeColumn) False els
+    columnWidget col = renderList (listDrawElement col activeColumn) False
     activeColumn = state^.libraryActiveColumnL
 
 listDrawElement :: LibraryColumn -> LibraryColumn -> Bool -> Text -> Widget n
 listDrawElement column activeColumn sel el = hCenter $ formatListElement column activeColumn sel $ pad $ str (unpack el)
   where
-    pad w = padLeft Max $ padRight Max $ w
+    pad w = padLeft Max $ padRight Max w
 
 formatListElement :: LibraryColumn -> LibraryColumn -> Bool -> Widget n -> Widget n
-formatListElement column activeColumn sel widget = withAttr attr widget
+formatListElement column activeColumn sel = withAttr attr
+  -- where
+  --   attr = if column == activeColumn then
+  --         (if sel then selActiveColAttrName else activeColAttrName) else
+  --         (if columnIsBefore column activeColumn then
+  --           (if sel then listSelAttrName else listAttrName) else listAttrName)
   where
-    attr = case column == activeColumn of
-          True -> case sel of
-            True -> selActiveColAttrName
-            False -> activeColAttrName
-          False -> case columnIsBefore column activeColumn of
-            True -> case sel of
-              True -> listSelAttrName
-              False -> listAttrName
-            False -> listAttrName
+    attr
+     | column == activeColumn =
+       if sel then selActiveColAttrName else activeColAttrName
+     | columnIsBefore column activeColumn =
+       if sel then listSelAttrName else listAttrName
+     | otherwise = listAttrName
 
 -- TODO: find a better way to do this
 -- column != activeColumn must be true before calling this function
@@ -96,6 +98,7 @@ columnIsBefore column activeColumn = case activeColumn of
   SongsColumn -> True
   AlbumsColumn -> case column of
     ArtistsColumn -> True
+    AlbumsColumn -> False
     SongsColumn -> False
 
 listAttrName :: AttrName
@@ -148,7 +151,7 @@ handleEvent event state = case event of
   (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return state
   -- (Vty.EvKey Vty.KEnter []) -> play state
   (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ cycleMode
-  ev -> return state
+  _ -> return state
   where activeColumn = state^.libraryActiveColumnL
 
 nextArtist :: LibraryState n -> LibraryState n
@@ -171,11 +174,11 @@ previousSong state = state & librarySongsL %~ listMoveUp
 
 updateAlbums :: LibraryState n -> LibraryState n
 -- updateAlbums state = state & libraryAlbums .~ (list (UIName "albums") newAlbums 1)
-updateAlbums state = state & libraryAlbumsL %~ (listReplace newAlbums (Just 0))
+updateAlbums state = state & libraryAlbumsL %~ listReplace newAlbums (Just 0)
   where
-    selArtist = snd <$> (listSelectedElement $ state^.libraryArtistsL)
+    selArtist = snd <$> listSelectedElement (state^.libraryArtistsL)
     newAlbums = case selArtist of
-      Just a -> fromMaybe V.empty ((V.fromList . Set.toAscList) <$> (lookup a (state^.filteredLibraryL.artistsL)))
+      Just a -> fromMaybe V.empty ((V.fromList . Set.toAscList) <$> lookup a (state^.filteredLibraryL.artistsL))
       Nothing -> V.empty
 
 updateSongs :: LibraryState n -> LibraryState n
@@ -183,8 +186,8 @@ updateSongs :: LibraryState n -> LibraryState n
 -- updateSongs state = state & librarySongsL .~ newSongsWidget
 updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered) (Just 0)
   where
-    selAlbum = snd <$> (listSelectedElement $ state^.libraryAlbumsL)
-    selArtist = snd <$> (listSelectedElement $ state^.libraryArtistsL)
+    selAlbum = snd <$> listSelectedElement (state^.libraryAlbumsL)
+    selArtist = snd <$> listSelectedElement (state^.libraryArtistsL)
     -- newSongsWidget = list (UIName "songs") newSongsFiltered 1
     -- newSongsWidget = listReplace newSongsFiltered Nothing $ toTxt (state^.librarySongsL)
     toTxt = map (tag Title "<no title>")
@@ -200,7 +203,7 @@ updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered
 nextColumn :: LibraryState n -> LibraryState n
 nextColumn state = state & libraryActiveColumnL .~ nextCol
   where
-    nextCol = case (state^.libraryActiveColumnL) of
+    nextCol = case state^.libraryActiveColumnL of
                 ArtistsColumn -> AlbumsColumn
                 AlbumsColumn -> SongsColumn
                 SongsColumn -> SongsColumn
@@ -208,7 +211,7 @@ nextColumn state = state & libraryActiveColumnL .~ nextCol
 previousColumn :: LibraryState n  -> LibraryState n
 previousColumn state = state & libraryActiveColumnL .~ prevCol
   where
-    prevCol = case (state^.libraryActiveColumnL) of
+    prevCol = case state^.libraryActiveColumnL of
                 ArtistsColumn -> ArtistsColumn
                 AlbumsColumn -> ArtistsColumn
                 SongsColumn -> AlbumsColumn
@@ -218,12 +221,10 @@ getSelected state = (artist, album, title)
   where
     activeColumn = state^.libraryActiveColumnL
     artist = listGetSelected $ state^.libraryArtistsL
-    album = case activeColumn == AlbumsColumn of
-      True -> listGetSelected $ state^.libraryAlbumsL
-      False -> Nothing
-    title = case activeColumn == SongsColumn of
-      True -> listGetSelected $ state^.librarySongsL
-      False -> Nothing
+    album = if activeColumn == AlbumsColumn then
+      listGetSelected $ state^.libraryAlbumsL else Nothing
+    title = if activeColumn == SongsColumn then
+      listGetSelected $ state^.librarySongsL else Nothing
 
 
 addSelectedToPlaylist :: LibraryState n -> IO ()
@@ -244,11 +245,8 @@ cycleMode mode = case mode of
 applyFilter :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
 applyFilter f state = state & libraryArtistsL %~ listReplace (V.fromList filteredArtists) (Just 0)
   where
-    -- filteredArtists = filter f (state^.libraryArtistsL.listElementsL)
-    -- filteredArtists = f (state^.libraryArtistsL.listElementsL)
     filteredArtists = f (keys (state^.libraryL.artistsL))
 
 resetFilter :: LibraryState n -> LibraryState n
--- resetFilter state = state & libraryArtistsL %~ listReplace (state^.libraryL.artistsL) Nothing
 resetFilter state = state & libraryArtistsL %~ listReplace artists (Just 0)
   where artists = V.fromList . keys $ state^.libraryL.artistsL
