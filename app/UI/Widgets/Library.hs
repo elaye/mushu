@@ -46,6 +46,7 @@ data LibraryState n = LibraryState
   , _librarySongs :: List n Text
   , _libraryActiveColumn :: LibraryColumn
   , _libraryMode :: LibraryMode
+  , _libraryFilter :: Maybe ([Text] -> [Text])
   }
 
 makeSuffixLenses ''LibraryState
@@ -123,6 +124,7 @@ mkState artistsName albumsName songsName library = LibraryState
   , _librarySongs = list songsName V.empty 1
   , _libraryActiveColumn = ArtistsColumn
   , _libraryMode = ArtistsAlbumsSongsMode
+  , _libraryFilter = Nothing
   }
   where
     artists = library^.artistsL
@@ -243,10 +245,27 @@ setMode mode state = case mode of
 -- Only filter on artists atm
 -- filter :: (Text -> Text) -> LibraryState -> LibraryState
 applyFilter :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
-applyFilter f state = state & libraryArtistsL %~ listReplace (V.fromList filteredArtists) (Just 0)
+applyFilter f state = newState & libraryFilterL .~ (Just f)
+  where
+    newState = case state^.libraryModeL of
+      ArtistsAlbumsSongsMode -> filterArtists f state
+      AlbumsSongsMode -> filterAlbums f state
+
+filterArtists :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
+filterArtists f state = state & libraryArtistsL %~ listReplace (V.fromList filteredArtists) (Just 0)
   where
     filteredArtists = f (keys (state^.libraryL.artistsL))
 
+filterAlbums :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
+filterAlbums f state = state & libraryAlbumsL %~ listReplace (V.fromList filteredAlbums) (Just 0)
+  where
+    filteredAlbums = f (keys (state^.libraryL.albumsL))
+
 resetFilter :: LibraryState n -> LibraryState n
-resetFilter state = state & libraryArtistsL %~ listReplace artists (Just 0)
-  where artists = V.fromList . keys $ state^.libraryL.artistsL
+resetFilter state = newState & libraryFilterL .~ Nothing
+  where
+    newState = case state^.libraryModeL of
+      ArtistsAlbumsSongsMode -> updateSongs $ updateAlbums $ state & libraryArtistsL %~ listReplace artists (Just 0)
+        where artists = V.fromList . keys $ state^.libraryL.artistsL
+      AlbumsSongsMode -> updateSongs $ state & libraryAlbumsL %~ listReplace albums (Just 0)
+        where albums = V.fromList . keys $ state^.libraryL.albumsL
