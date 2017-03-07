@@ -142,7 +142,8 @@ handleEvent event state = case event of
   (Vty.EvKey (Vty.KChar 'h') []) -> return $ previousColumn state
   (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> return state
   (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return state
-  (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ cycleMode
+  -- (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ toggleMode
+  (Vty.EvKey (Vty.KChar 't') []) -> return $ toggleMode state
   _ -> return state
   where activeColumn = state^.libraryActiveColumnL
 
@@ -188,18 +189,24 @@ updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered
 nextColumn :: LibraryState n -> LibraryState n
 nextColumn state = state & libraryActiveColumnL .~ nextCol
   where
-    nextCol = case state^.libraryActiveColumnL of
+    activeColumn = state^.libraryActiveColumnL
+    nextCol = case state^.libraryModeL of
+      ArtistsAlbumsSongsMode -> case activeColumn of
                 ArtistsColumn -> AlbumsColumn
                 AlbumsColumn -> SongsColumn
                 SongsColumn -> SongsColumn
+      AlbumsSongsMode -> SongsColumn
 
 previousColumn :: LibraryState n  -> LibraryState n
 previousColumn state = state & libraryActiveColumnL .~ prevCol
   where
-    prevCol = case state^.libraryActiveColumnL of
+    activeColumn = state^.libraryActiveColumnL
+    prevCol = case state^.libraryModeL of
+      ArtistsAlbumsSongsMode -> case activeColumn of
                 ArtistsColumn -> ArtistsColumn
                 AlbumsColumn -> ArtistsColumn
                 SongsColumn -> AlbumsColumn
+      AlbumsSongsMode -> AlbumsColumn
 
 getSelected :: LibraryState n -> (Maybe Text, Maybe Text, Maybe Text)
 getSelected state = (artist, album, title)
@@ -217,11 +224,20 @@ addSelectedToPlaylist state = addToPlaylist $ getSelected state
 addToPlaylistAndPlay :: LibraryState n -> IO ()
 addToPlaylistAndPlay state = MPD.addToPlaylistAndPlay $ getSelected state
 
-cycleMode :: LibraryMode -> LibraryMode
-cycleMode mode = case mode of
-  ArtistsAlbumsSongsMode -> AlbumsSongsMode
-  AlbumsSongsMode -> SongsMode
-  SongsMode -> ArtistsAlbumsSongsMode
+toggleMode :: LibraryState n -> LibraryState n
+toggleMode state = case state^.libraryModeL of
+  ArtistsAlbumsSongsMode -> setMode AlbumsSongsMode state
+  AlbumsSongsMode -> setMode ArtistsAlbumsSongsMode state
+  -- AlbumsSongsMode -> SongsMode
+  -- SongsMode -> ArtistsAlbumsSongsMode
+
+setMode :: LibraryMode -> LibraryState n -> LibraryState n
+setMode mode state = case mode of
+  ArtistsAlbumsSongsMode -> updateSongs $ updateAlbums $ state & libraryModeL .~ ArtistsAlbumsSongsMode
+                                  & libraryActiveColumnL .~ ArtistsColumn
+  AlbumsSongsMode -> updateSongs $ state & libraryModeL .~ AlbumsSongsMode
+                                  & libraryActiveColumnL .~ AlbumsColumn
+                                  & libraryAlbumsL %~ listReplace (fromList (keys (state^.libraryL.albumsL))) (Just 0)
 
 -- TODO: modify this to filter depending on the mode (artists/albums or albums)
 -- Only filter on artists atm
