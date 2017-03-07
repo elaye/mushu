@@ -36,7 +36,7 @@ import UI.Utils (listGetSelected)
 import Library
 
 data LibraryColumn = ArtistsColumn | AlbumsColumn | SongsColumn deriving (Show, Eq)
-data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode | SongsMode deriving (Show, Eq)
+data LibraryMode = ArtistsAlbumsSongsMode | AlbumsSongsMode deriving (Show, Eq)
 
 data LibraryState n = LibraryState
   { _library :: Library
@@ -57,7 +57,7 @@ mkWidget state = columns
     columns = case state^.libraryModeL of
       ArtistsAlbumsSongsMode -> column "Artists" True artistsWidget <+> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
       AlbumsSongsMode -> column "Albums" True albumsWidget <+> column "Songs" False songsWidget
-      SongsMode -> column "Songs" False songsWidget
+      -- SongsMode -> column "Songs" False songsWidget
 
     column name bBorder widget = title name <=> if bBorder then widget <+> vBorder else widget
     title t = padRight Max (str t) <=> hBorder
