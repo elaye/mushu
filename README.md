@@ -38,14 +38,14 @@ I also wanted to develop a real world haskell project and this seemed like a goo
 TODO
 ----
 
- - [] Add config file (mainly to be able to choose a different server than `localhost:6600` for MPD)
- - [] Add MPD error handling and show error in a notification widget
- - [] Add MPD playback modes handling
+ - [ ] Add config file (mainly to be able to choose a different server than `localhost:6600` for MPD)
+ - [ ] Add MPD error handling and show error in a notification widget
+ - [ ] Add MPD playback modes handling
  - UI
-   - [] Improve help screen
-   - [] Add top / bottom list keybindings (`G` and `g`)
-   - [] Add delete from playlist keybinding (`d` or `x`?)
- - [] Fix all the bugs and refactor!
+   - [ ] Improve help screen
+   - [ ] Add top / bottom list keybindings (`G` and `g`)
+   - [ ] Add delete from playlist keybinding (`d` or `x`?)
+ - [ ] Fix all the bugs and refactor!
 
 Contributing
 ------------
