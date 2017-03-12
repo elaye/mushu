@@ -156,16 +156,22 @@ next state = case state^.libraryActiveColumnL of
   SongsColumn -> nextSong state
 
 nextArtist :: LibraryState n -> LibraryState n
-nextArtist state = updateSongs $ updateAlbums (state & libraryArtistsL %~ listMoveDown)
+nextArtist state = updateArtistAlbumSongs $ updateArtistAlbums (state & libraryArtistsL %~ listMoveDown)
 
 previousArtist :: LibraryState n -> LibraryState n
-previousArtist state = updateSongs $ updateAlbums (state & libraryArtistsL %~ listMoveUp)
+previousArtist state = updateArtistAlbumSongs $ updateArtistAlbums (state & libraryArtistsL %~ listMoveUp)
 
 nextAlbum :: LibraryState n  -> LibraryState n
-nextAlbum state = updateSongs $ state & libraryAlbumsL %~ listMoveDown
+nextAlbum state = updateFn $ state & libraryAlbumsL %~ listMoveDown
+  where updateFn = case state^.libraryModeL of
+          ArtistsAlbumsSongsMode -> updateArtistAlbumSongs
+          AlbumsSongsMode -> updateAlbumSongs
 
 previousAlbum :: LibraryState n -> LibraryState n
-previousAlbum state = updateSongs $ state & libraryAlbumsL %~ listMoveUp
+previousAlbum state = updateFn $ state & libraryAlbumsL %~ listMoveUp
+  where updateFn = case state^.libraryModeL of
+          ArtistsAlbumsSongsMode -> updateArtistAlbumSongs
+          AlbumsSongsMode -> updateAlbumSongs
 
 nextSong :: LibraryState n -> LibraryState n
 nextSong state = state & librarySongsL %~ listMoveDown
@@ -173,16 +179,16 @@ nextSong state = state & librarySongsL %~ listMoveDown
 previousSong :: LibraryState n -> LibraryState n
 previousSong state = state & librarySongsL %~ listMoveUp
 
-updateAlbums :: LibraryState n -> LibraryState n
-updateAlbums state = state & libraryAlbumsL %~ listReplace newAlbums (Just 0)
+updateArtistAlbums :: LibraryState n -> LibraryState n
+updateArtistAlbums state = state & libraryAlbumsL %~ listReplace newAlbums (Just 0)
   where
     selArtist = snd <$> listSelectedElement (state^.libraryArtistsL)
     newAlbums = case selArtist of
       Just a -> fromMaybe V.empty ((V.fromList . Set.toAscList) <$> lookup a (state^.filteredLibraryL.artistsL))
       Nothing -> V.empty
 
-updateSongs :: LibraryState n -> LibraryState n
-updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered) (Just 0)
+updateArtistAlbumSongs :: LibraryState n -> LibraryState n
+updateArtistAlbumSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered) (Just 0)
   where
     selAlbum = snd <$> listSelectedElement (state^.libraryAlbumsL)
     selArtist = snd <$> listSelectedElement (state^.libraryArtistsL)
@@ -190,6 +196,15 @@ updateSongs state = state & librarySongsL %~ listReplace (toTxt newSongsFiltered
     newSongsFiltered = case selArtist of
       Just a -> filter (\s -> tag Artist "" s == a) newSongs
       Nothing -> newSongs
+    newSongs = case selAlbum of
+      Just a -> fromMaybe V.empty (lookup a (state^.filteredLibraryL.albumsL))
+      Nothing -> V.empty
+
+updateAlbumSongs :: LibraryState n -> LibraryState n
+updateAlbumSongs state = state & librarySongsL %~ listReplace (toTxt newSongs) (Just 0)
+  where
+    selAlbum = snd <$> listSelectedElement (state^.libraryAlbumsL)
+    toTxt = map (tag Title "<no title>")
     newSongs = case selAlbum of
       Just a -> fromMaybe V.empty (lookup a (state^.filteredLibraryL.albumsL))
       Nothing -> V.empty
@@ -241,9 +256,9 @@ toggleMode state = case state^.libraryModeL of
 
 setMode :: LibraryMode -> LibraryState n -> LibraryState n
 setMode mode state = case mode of
-  ArtistsAlbumsSongsMode -> updateSongs $ updateAlbums $ state & libraryModeL .~ ArtistsAlbumsSongsMode
+  ArtistsAlbumsSongsMode -> updateArtistAlbumSongs $ updateArtistAlbums $ state & libraryModeL .~ ArtistsAlbumsSongsMode
                                   & libraryActiveColumnL .~ ArtistsColumn
-  AlbumsSongsMode -> updateSongs $ state & libraryModeL .~ AlbumsSongsMode
+  AlbumsSongsMode -> updateAlbumSongs $ state & libraryModeL .~ AlbumsSongsMode
                                   & libraryActiveColumnL .~ AlbumsColumn
                                   & libraryAlbumsL %~ listReplace (fromList (keys (state^.libraryL.albumsL))) (Just 0)
 
@@ -251,7 +266,7 @@ setMode mode state = case mode of
 -- Only filter on artists atm
 -- filter :: (Text -> Text) -> LibraryState -> LibraryState
 applyFilter :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
-applyFilter f state = newState & libraryFilterL .~ (Just f)
+applyFilter f state = newState & libraryFilterL .~ Just f
   where
     newState = case state^.libraryModeL of
       ArtistsAlbumsSongsMode -> filterArtists f state
@@ -271,7 +286,7 @@ resetFilter :: LibraryState n -> LibraryState n
 resetFilter state = newState & libraryFilterL .~ Nothing
   where
     newState = case state^.libraryModeL of
-      ArtistsAlbumsSongsMode -> updateSongs $ updateAlbums $ state & libraryArtistsL %~ listReplace artists (Just 0)
+      ArtistsAlbumsSongsMode -> updateArtistAlbumSongs $ updateArtistAlbums $ state & libraryArtistsL %~ listReplace artists (Just 0)
         where artists = V.fromList . keys $ state^.libraryL.artistsL
-      AlbumsSongsMode -> updateSongs $ state & libraryAlbumsL %~ listReplace albums (Just 0)
+      AlbumsSongsMode -> updateAlbumSongs $ state & libraryAlbumsL %~ listReplace albums (Just 0)
         where albums = V.fromList . keys $ state^.libraryL.albumsL
