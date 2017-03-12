@@ -1,0 +1,54 @@
+# Taken from: https://github.com/commercialhaskell/stack/blob/master/.travis.yml
+# The difference is that we don't make a cabal build
+
+language: generic
+sudo: false
+
+cache:
+    directories:
+        - $HOME/.ghc
+        - $HOME/.cabal
+        - $HOME/.stack
+
+matrix:
+  fast_finish: true
+  include:
+    - env: STACK_YAML=stack.yaml
+      compiler: ": #stack 6.1"
+      addons: {apt: {packages: [ghc-7.10.3], sources: [hvr-ghc]}}
+
+    - env: STACK_YAML=stack.yaml
+      compiler: ": #stack 6.1 osx"
+      os: osx
+
+    # - env: STACK_YAML=stack-8.0.yaml
+    #   compiler: ": #stack 8.0.2"
+    #   addons: {apt: {packages: [ghc-8.0.2], sources: [hvr-ghc]}}
+
+    # - env: STACK_YAML=stack-8.0.yaml
+    #   compiler: ": #stack 8.0.2 osx"
+    #   os: osx
+
+  allow_failures:
+    - env: STACK_YAML=stack.yaml
+      compiler: ": #stack 6.1 osx"
+      os: osx
+
+    # - env: STACK_YAML=stack-8.0.yaml
+    #   compiler: ": #stack 8.0.2 osx"
+    #   os: osx
+
+# Note: the distinction between `before_install` and `install` is not important.
+# - in before_install we install build tools
+# - in install we install (haskell) dependencies
+before_install:
+ - unset CC
+ - export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH;;
+ - ./.travis-setup.sh
+
+install:
+ - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+ - stack --no-terminal test --only-dependencies;;
+
+script:
+ - set -e; stack --no-terminal test --haddock --no-haddock-deps --ghc-options="-Werror";;
