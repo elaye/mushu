@@ -28,10 +28,24 @@ Why another MPD client?
 -----------------------
 
 I used [ncmpcpp](https://github.com/arybczak/ncmpcpp) for quite some time and realised that I was always doing the same thing with it: search for music -> add to playlist and play.
+I was not entirely satisfied with the search in ncmpcpp so I decided to make my own.
+Also, ncmpcpp as way too many features that I don't use.
 
 The aim is to keep the number of features to a minimum without being unusable.
 
 I also wanted to develop a real world haskell project and this seemed like a good opportunity.
+
+TODO
+----
+
+ - [] Add config file (mainly to be able to choose a different server than `localhost:6600` for MPD)
+ - [] Add MPD error handling and show error in a notification widget
+ - [] Add MPD playback modes handling
+ - UI
+   - [] Improve help screen
+   - [] Add top / bottom list keybindings (`G` and `g`)
+   - [] Add delete from playlist keybinding (`d` or `x`?)
+ - [] Fix all the bugs and refactor!
 
 Contributing
 ------------
