@@ -13,7 +13,7 @@ A lot of MPD features are not implemented.
 Dependencies
 --------------
 
-libncurses5-dev
+`libncurses5-dev`
 
 Install
 -------
@@ -37,4 +37,6 @@ Contributing
 ------------
 
 Contributions are very welcome. However please open an issue before developing anything too big so we can discuss it, I'd hate to have wasted your time if the Pull Request you made can't be merged.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
+If you want an overview of the app, check out [DEVELOPER.md](DEVELOPER.md).
 
