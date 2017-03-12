@@ -248,9 +248,13 @@ addToPlaylistAndPlay :: LibraryState n -> IO ()
 addToPlaylistAndPlay state = MPD.addToPlaylistAndPlay $ getSelected state
 
 toggleMode :: LibraryState n -> LibraryState n
-toggleMode state = case state^.libraryModeL of
-  ArtistsAlbumsSongsMode -> setMode AlbumsSongsMode state
-  AlbumsSongsMode -> setMode ArtistsAlbumsSongsMode state
+toggleMode state = case state^.libraryFilterL of
+  Nothing -> newModeState
+  Just f -> applyFilter f newModeState
+  where
+    newModeState = case state^.libraryModeL of
+      ArtistsAlbumsSongsMode -> setMode AlbumsSongsMode state
+      AlbumsSongsMode -> setMode ArtistsAlbumsSongsMode state
   -- AlbumsSongsMode -> SongsMode
   -- SongsMode -> ArtistsAlbumsSongsMode
 
