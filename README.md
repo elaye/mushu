@@ -1,4 +1,4 @@
-Mushu
+Mushu [![Build Status](https://travis-ci.org/elaye/mushu.svg?branch=master)](https://travis-ci.org/elaye/mushu)
 =====
 
 Mushu is a minimalist MPD client with a Text User Interface (TUI) focused on ease of use.
