@@ -142,12 +142,18 @@ handleEvent event state = case event of
     SongsColumn -> return $ previousSong state
   (Vty.EvKey (Vty.KChar 'l') []) -> return $ nextColumn state
   (Vty.EvKey (Vty.KChar 'h') []) -> return $ previousColumn state
-  (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> return state
-  (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return state
+  (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> return (next state)
+  (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return (next state)
   -- (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ toggleMode
   (Vty.EvKey (Vty.KChar 't') []) -> return $ toggleMode state
   _ -> return state
   where activeColumn = state^.libraryActiveColumnL
+
+next :: LibraryState n -> LibraryState n
+next state = case state^.libraryActiveColumnL of
+  ArtistsColumn -> nextArtist state
+  AlbumsColumn -> nextAlbum state
+  SongsColumn -> nextSong state
 
 nextArtist :: LibraryState n -> LibraryState n
 nextArtist state = updateSongs $ updateAlbums (state & libraryArtistsL %~ listMoveDown)
