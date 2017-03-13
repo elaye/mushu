@@ -29,7 +29,7 @@ import qualified Data.Vector as V
 import qualified Data.Set as Set
 
 import Network.MPD (Metadata(..))
-import MPD (tag, addToPlaylist)
+import MPD (tag, addArtistToPlaylist, addAlbumToPlaylist, addSongToPlaylist)
 import qualified MPD
 import UI.Utils (listGetSelected)
 
@@ -142,9 +142,8 @@ handleEvent event state = case event of
     SongsColumn -> return $ previousSong state
   (Vty.EvKey (Vty.KChar 'l') []) -> return $ nextColumn state
   (Vty.EvKey (Vty.KChar 'h') []) -> return $ previousColumn state
-  (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addSelectedToPlaylist state)) >> return (next state)
-  (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylistAndPlay state)) >> return (next state)
-  -- (Vty.EvKey (Vty.KChar 't') []) -> return $ state & libraryModeL %~ toggleMode
+  (Vty.EvKey (Vty.KChar 'a') []) -> void (liftIO (addToPlaylist state False)) >> return (next state)
+  (Vty.EvKey Vty.KEnter []) -> void (liftIO (addToPlaylist state True)) >> return (next state)
   (Vty.EvKey (Vty.KChar 't') []) -> return $ toggleMode state
   _ -> return state
   where activeColumn = state^.libraryActiveColumnL
@@ -235,17 +234,22 @@ getSelected :: LibraryState n -> (Maybe Text, Maybe Text, Maybe Text)
 getSelected state = (artist, album, title)
   where
     activeColumn = state^.libraryActiveColumnL
-    artist = listGetSelected $ state^.libraryArtistsL
+    artist = case state^.libraryModeL of
+      ArtistsAlbumsSongsMode -> listGetSelected $ state^.libraryArtistsL
+      AlbumsSongsMode -> Nothing
     album = if activeColumn == AlbumsColumn then
       listGetSelected $ state^.libraryAlbumsL else Nothing
     title = if activeColumn == SongsColumn then
       listGetSelected $ state^.librarySongsL else Nothing
 
-addSelectedToPlaylist :: LibraryState n -> IO ()
-addSelectedToPlaylist state = addToPlaylist $ getSelected state
+addToPlaylist :: LibraryState n -> Bool -> IO ()
+addToPlaylist state = addSelectionToPlaylist (getSelected state)
 
-addToPlaylistAndPlay :: LibraryState n -> IO ()
-addToPlaylistAndPlay state = MPD.addToPlaylistAndPlay $ getSelected state
+addSelectionToPlaylist :: (Maybe Text, Maybe Text, Maybe Text) -> Bool -> IO ()
+addSelectionToPlaylist (Just artist, Nothing, Nothing) play = addArtistToPlaylist artist play
+addSelectionToPlaylist (maybeArtist, Just album, Nothing) play = addAlbumToPlaylist maybeArtist album play
+addSelectionToPlaylist (_, Just album, Just song) play = addSongToPlaylist album song play
+addSelectionToPlaylist _ _ = putStrLn "This shouldn't happen"
 
 toggleMode :: LibraryState n -> LibraryState n
 toggleMode state = case state^.libraryFilterL of
@@ -255,8 +259,6 @@ toggleMode state = case state^.libraryFilterL of
     newModeState = case state^.libraryModeL of
       ArtistsAlbumsSongsMode -> setMode AlbumsSongsMode state
       AlbumsSongsMode -> setMode ArtistsAlbumsSongsMode state
-  -- AlbumsSongsMode -> SongsMode
-  -- SongsMode -> ArtistsAlbumsSongsMode
 
 setMode :: LibraryMode -> LibraryState n -> LibraryState n
 setMode mode state = case mode of

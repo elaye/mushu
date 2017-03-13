@@ -8,8 +8,9 @@ module MPD
 , fetchArtistAlbumSongs
 , fetchStatus
 , clearPlaylist
-, addToPlaylist
-, addToPlaylistAndPlay
+, addArtistToPlaylist
+, addAlbumToPlaylist
+, addSongToPlaylist
 , setVolume
 , tag
 , mpdReq
@@ -102,35 +103,38 @@ fetchStatus = do
 clearPlaylist :: IO ()
 clearPlaylist = void $ withMPD clear
 
-mkQuery :: (Maybe Text, Maybe Text, Maybe Text) -> Maybe Query
-mkQuery (Nothing, _, _) = Nothing
-mkQuery (Just artist, maybeAlbum, maybeTitle) = Just queryArtistAlbumTitle
-  where
-    toValue = fromString . unpack
-    queryArtist = Artist =? (toValue artist)
-    queryArtistAlbum = case maybeAlbum of
-      Just album -> queryArtist <&> Album =? (toValue album)
-      Nothing -> queryArtist
-    queryArtistAlbumTitle = case maybeTitle of
-      Just title -> queryArtistAlbum <&> Title =? (toValue title)
-      Nothing -> queryArtistAlbum
+toValue = fromString . unpack
 
-addToPlaylist :: (Maybe Text, Maybe Text, Maybe Text) -> IO ()
-addToPlaylist selection = do
-  let query = mkQuery selection
-  case query of
-    Nothing -> print "Missing artist" >> return ()
-    Just q -> do
-      res <- withMPD $ findAdd q
-      case res of
-        Left err -> throw MPDException
-        Right _ -> return ()
+addArtistToPlaylist :: Text -> Bool -> IO ()
+addArtistToPlaylist artist play = do
+  let query = Artist =? toValue artist
+  if play then addToPlaylistAndPlay query else addToPlaylist query
 
-addToPlaylistAndPlay :: (Maybe Text, Maybe Text, Maybe Text) -> IO ()
-addToPlaylistAndPlay (Nothing, _, _) = print "unknown artist for adding to playlist"
-addToPlaylistAndPlay selection = do
+addAlbumToPlaylist :: Maybe Text -> Text -> Bool -> IO ()
+addAlbumToPlaylist maybeArtist album play = do
+  let
+    albumQuery = Album =? toValue album
+    query = case maybeArtist of
+        Just artist -> Artist =? toValue artist <&> albumQuery
+        Nothing -> albumQuery
+  if play then addToPlaylistAndPlay query else addToPlaylist query
+
+addSongToPlaylist :: Text -> Text -> Bool -> IO ()
+addSongToPlaylist album song play = do
+  let query = Album =? toValue album <&> Title =? toValue song
+  if play then addToPlaylist query else addToPlaylist query
+
+addToPlaylist :: Query -> IO ()
+addToPlaylist query = do
+  res <- withMPD $ findAdd query
+  case res of
+    Left err -> throw MPDException
+    Right _ -> return ()
+
+addToPlaylistAndPlay :: Query -> IO ()
+addToPlaylistAndPlay query = do
   n <- length <$> fetchPlaylist
-  void $ addToPlaylist selection
+  void $ addToPlaylist query
   r <- withMPD $ play (Just n)
   return ()
 
