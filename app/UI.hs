@@ -31,7 +31,7 @@ import qualified Graphics.Vty as Vty
 import Graphics.Vty.Config (defaultConfig)
 
 import Network.MPD (Song, idle, Subsystem(..), Status(..))
-import MPD (togglePlayPause, fetchPlaylist, fetchStatus, clearPlaylist, mpdReq, setVolume)
+import MPD (togglePlayPause, fetchPlaylist, fetchStatus, clearPlaylist, mpdReq, setVolume, currentSong)
 
 type NextState n = EventM n (Next (AppState n))
 
@@ -71,7 +71,9 @@ updatePlaylist state = do
 updateStatus :: AppState n -> NextState n
 updateStatus state = do
   st <- liftIO fetchStatus
+  song <- liftIO currentSong
   M.continue $ state & status .~ st
+                    & playlistStateL . Playlist.playingSongL .~ song
 
 increaseVolume :: AppState n -> IO ()
 increaseVolume = changeVolume (+3)
@@ -134,6 +136,8 @@ start = do
   st <- fetchStatus
   mpdEventChan <- newBChan 10
   let initState = initialState playlist library st
+  song <- currentSong
+  let appState = initState & playlistStateL . Playlist.playingSongL .~ song
   _ <- async $ mpdLoop mpdEventChan
   void $ M.customMain (Vty.mkVty defaultConfig)
-                    (Just mpdEventChan) app initState
+                    (Just mpdEventChan) app appState

@@ -49,12 +49,12 @@ import qualified Network.MPD as M
 import Types
 import Brick.BChan (BChan(..), writeBChan)
 
-currentSong :: IO ()
+currentSong :: IO (Maybe Song)
 currentSong = do
-  res <- withMPD $ M.currentSong
+  res <- withMPD M.currentSong
   case res of
-    Left err -> print err
-    Right song -> print song
+    Left err -> print err >> return Nothing
+    Right song -> return song
 
 togglePlayPause :: IO ()
 togglePlayPause = do
