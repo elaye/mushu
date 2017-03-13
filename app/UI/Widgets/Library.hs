@@ -178,6 +178,12 @@ nextSong state = state & librarySongsL %~ listMoveDown
 previousSong :: LibraryState n -> LibraryState n
 previousSong state = state & librarySongsL %~ listMoveUp
 
+update :: LibraryState n -> LibraryState n
+update state = updateFn state
+  where updateFn = case state^.libraryModeL of
+          ArtistsAlbumsSongsMode -> updateArtistAlbums . updateArtistAlbumSongs
+          AlbumsSongsMode -> updateAlbumSongs
+
 updateArtistAlbums :: LibraryState n -> LibraryState n
 updateArtistAlbums state = state & libraryAlbumsL %~ listReplace newAlbums (Just 0)
   where
@@ -252,7 +258,7 @@ addSelectionToPlaylist (_, Just album, Just song) play = addSongToPlaylist album
 addSelectionToPlaylist _ _ = putStrLn "This shouldn't happen"
 
 toggleMode :: LibraryState n -> LibraryState n
-toggleMode state = case state^.libraryFilterL of
+toggleMode state = update $ case state^.libraryFilterL of
   Nothing -> newModeState
   Just f -> applyFilter f newModeState
   where
