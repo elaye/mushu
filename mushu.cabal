@@ -10,7 +10,7 @@ maintainer:          elaye.github.io@gmail.com
 copyright:           2016 Elie Genard
 category:            Sound
 build-type:          Simple
--- extra-source-files:
+extra-source-files:  README.md
 cabal-version:       >=1.10
 
 executable mushu
