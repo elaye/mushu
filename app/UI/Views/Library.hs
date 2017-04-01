@@ -49,7 +49,7 @@ filterFocusedEvent state e = case e of
 
 filterBlurredEvent :: AppState UIName -> Vty.Event -> EventM UIName (Next (AppState UIName))
 filterBlurredEvent state e = case e of
-    (Vty.EvKey (Vty.KChar 'f') []) -> continue $ state & filterStateL %~ Filter.focus
+    (Vty.EvKey (Vty.KChar '/') []) -> continue $ state & filterStateL %~ Filter.focus
     (Vty.EvKey (Vty.KChar 'q') []) -> halt state
     (Vty.EvKey Vty.KEsc []) -> continue $ if state^.filterStateL.isActiveL then
       resetFilter state else state
