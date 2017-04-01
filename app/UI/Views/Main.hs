@@ -14,7 +14,6 @@ import Lens.Micro.Platform ((^.))
 
 import qualified UI.Widgets.Status as Status
 import qualified UI.Widgets.Help as Help
-import qualified UI.Widgets.Command as Command
 import qualified UI.Widgets.Notification as Notification
 import UI.Widgets.Playlist (playingSongL)
 
@@ -34,6 +33,5 @@ draw state widget = [ui]
                   , hCenter widget
                   , view
                   , Notification.mkWidget (state^.notificationState)
-                  -- , Command.mkWidget
                   ]
 
