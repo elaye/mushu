@@ -1,5 +1,5 @@
 name:                mushu
-version:             0.1.0
+version:             0.1.1
 synopsis:            Minimalist MPD client
 description:         Mushu is a minimalist MPD client with a TUI and an incremental fuzzy finder for your music library
 homepage:            https://github.com/elaye/mushu#README.md
