@@ -20,9 +20,10 @@ executable mushu
   other-modules:       Library
                       , MPD
                       , TH
+                      , Types
                       , UI, UI.Types, UI.Utils
                       , UI.Views.Help, UI.Views.Library, UI.Views.Main, UI.Views.Playlist
-                      , UI.Widgets.Command, UI.Widgets.Help, UI.Widgets.Library, UI.Widgets.Playlist, UI.Widgets.Status
+                      , UI.Widgets.Command, UI.Widgets.Help, UI.Widgets.Library, UI.Widgets.Playlist, UI.Widgets.Status, UI.Widgets.Filter, UI.Widgets.Notification
   build-depends:       base >= 4 && < 5
                       ,classy-prelude
                       ,safe-exceptions
