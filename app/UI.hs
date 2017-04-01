@@ -6,8 +6,6 @@ import ClassyPrelude hiding (catch)
 import Library
 import UI.Types
 
-import Control.Concurrent.Async (async)
-
 import Lens.Micro.Platform ((^.), (&), (.~), (%~))
 
 import qualified UI.Utils as Utils
