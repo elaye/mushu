@@ -7,8 +7,8 @@ import ClassyPrelude
 import Brick.Widgets.Center (vCenter, hCenter)
 import Brick.Widgets.Border (hBorder)
 
-import Brick.Types (Widget)
-import Brick.Widgets.Core (vBox, str, (<=>))
+import Brick.Types (Widget, Padding(..))
+import Brick.Widgets.Core (vBox, hLimit, str, padLeft, padRight, (<=>), (<+>))
 
 import Lens.Micro.Platform ((^.))
 
@@ -25,7 +25,9 @@ draw state widget = [ui]
     where
         {-total = str $ show $ Vec.length $ mails^.(L.listElementsL)-}
         ui = vCenter $ vBox widgets
-        view = hBorder <=> (hCenter (str $ show (state^.activeView)))
+        -- Cheap centering
+        view = hBorder <=> (str "       " <+> hCenter activeViewWidget <+> str "?: Help")
+        activeViewWidget = str $ show (state^.activeView)
         widgets = [--Help.mkWidget
                    Status.mkWidget state (state^.playlistStateL.playingSongL)
                   , hBorder
