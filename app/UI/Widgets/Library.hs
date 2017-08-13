@@ -281,8 +281,8 @@ applyFilter :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
 applyFilter f state = newState & libraryFilterL .~ Just f
   where
     newState = case state^.libraryModeL of
-      ArtistsAlbumsSongsMode -> filterArtists f state
-      AlbumsSongsMode -> filterAlbums f state
+      ArtistsAlbumsSongsMode -> updateArtistAlbumSongs $ updateArtistAlbums $ filterArtists f state
+      AlbumsSongsMode -> updateAlbumSongs $ filterAlbums f state
 
 filterArtists :: ([Text] -> [Text]) -> LibraryState n -> LibraryState n
 filterArtists f state = state & libraryArtistsL %~ listReplace (V.fromList filteredArtists) (Just 0)
