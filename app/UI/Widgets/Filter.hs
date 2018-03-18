@@ -46,13 +46,13 @@ makeSuffixLenses ''FilterState
 
 mkState :: n -> FilterState n
 mkState name = FilterState
-  { _editor = editorText name (str . (concatMap unpack)) (Just 1) ""
+  { _editor = editorText name (Just 1) ""
   , _isFocused = False
   , _isActive = False
   }
 
 mkWidget :: (Show n, Ord n) => FilterState n -> Widget n
-mkWidget state = str "Filter: " <+> (withAttr filterAttrName (renderEditor (state^.isFocusedL) (state^.editorL))) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
+mkWidget state = str "Filter: " <+> (withAttr filterAttrName (renderEditor (str . (concatMap unpack)) (state^.isFocusedL) (state^.editorL))) <+> (padLeft Max (str "Enter: apply | Esc: disable "))
 
 handleEvent :: Vty.Event -> FilterState n -> EventM n (FilterState n)
 handleEvent event state = do
