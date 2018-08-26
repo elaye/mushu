@@ -84,7 +84,7 @@ fetchArtistAlbums artist = do
 
 fetchArtistAlbumSongs :: Artist -> Album -> IO [Song]
 fetchArtistAlbumSongs artist album = mpdReq req
-  where req = search (Artist =? artist <&> Album =? album)
+  where req = search (Artist =? artist M.<&> Album =? album)
 
 fetchAllSongs :: IO [Song]
 fetchAllSongs = mpdReq $ search (Artist =? fromString "")
@@ -115,13 +115,13 @@ addAlbumToPlaylist maybeArtist album play = do
   let
     albumQuery = Album =? toValue album
     query = case maybeArtist of
-        Just artist -> Artist =? toValue artist <&> albumQuery
+        Just artist -> Artist =? toValue artist M.<&> albumQuery
         Nothing -> albumQuery
   if play then addToPlaylistAndPlay query else addToPlaylist query
 
 addSongToPlaylist :: Text -> Text -> Bool -> IO ()
 addSongToPlaylist album song play = do
-  let query = Album =? toValue album <&> Title =? toValue song
+  let query = Album =? toValue album M.<&> Title =? toValue song
   if play then addToPlaylist query else addToPlaylist query
 
 addToPlaylist :: Query -> IO ()

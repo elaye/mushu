@@ -45,14 +45,14 @@ executable mushu
                       ,text-zipper
                       ,microlens
                       ,microlens-th
-                      ,microlens-platform >= 0.3.1.0
+                      ,microlens-platform
                       ,vty >= 5.5.0
                       ,process
                       ,vector
                       ,transformers
                       ,data-default
                       ,filepath
-                      ,directory >= 1.2.5.0
+                      ,directory
                       ,template-haskell >= 2.10
   default-language:    Haskell2010
   default-extensions:         NoImplicitPrelude, OverloadedStrings
