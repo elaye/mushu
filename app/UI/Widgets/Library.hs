@@ -24,7 +24,7 @@ import Brick.Widgets.List (List(..), list, listMoveDown, listMoveUp, listReplace
 import Brick.Util (fg, on)
 import qualified Graphics.Vty as Vty
 
-import Data.Map.Strict (elemAt)
+import Data.Map.Strict (elemAt, size)
 import qualified Data.Vector as V
 import qualified Data.Set as Set
 
@@ -128,7 +128,9 @@ mkState artistsName albumsName songsName library = LibraryState
   }
   where
     artists = library^.artistsL
-    firstArtistAlbums = V.fromList . Set.toAscList $ snd $ elemAt 0 artists
+    firstArtistAlbums = case size artists of
+      0 -> V.empty
+      _ -> V.fromList . Set.toAscList $ snd $ elemAt 0 artists
 
 handleEvent :: Vty.Event -> LibraryState n -> EventM n (LibraryState n)
 handleEvent event state = case event of
